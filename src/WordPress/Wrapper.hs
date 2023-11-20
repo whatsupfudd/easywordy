@@ -15,8 +15,8 @@ import qualified Language.C.Inline as C
 
 C.context (C.baseCtx <> C.funCtx)
 
-my_ub_write :: IORef ByteString -> Ptr CChar -> CULong -> IO CULong
-my_ub_write buf ptr size = do
+localUbWrite :: IORef ByteString -> Ptr CChar -> CULong -> IO CULong
+localUbWrite buf ptr size = do
   -- Convert the C string to ByteString
   str <- B.packCStringLen (ptr, fromIntegral size)
   -- Append the new string to the buffer
@@ -33,7 +33,7 @@ C.include "phpSupport.c"
 testPHP :: IO ByteString
 testPHP = do
   -- buf <- newIORef B.empty  -- Create a new IORef ByteString to store the output
-  -- let ub_write = my_ub_write buf
+  -- let ub_write = localUbWrite buf
 
   scriptFile <- newCAString "/Users/lhugo/Documents/Projets/Fudd/Lib/wordpress/wp-admin/install.php" -- index.php
   -- scriptFile <- newCAString "/tmp/test.php"
@@ -67,10 +67,9 @@ testPHP = do
     PHP_EMBED_END_BLOCK()
     return getGlobalBuffer();
   } |]
-  rezStr <- B.packCString rezA
+  B.packCString rezA
   -- C.free rezA
   -- rezStr <- readIORef buf
-  pure rezStr
 
 
 {-
