@@ -35,7 +35,7 @@ testPHP = do
   -- buf <- newIORef B.empty  -- Create a new IORef ByteString to store the output
   -- let ub_write = localUbWrite buf
 
-  scriptFile <- newCAString "/Users/lhugo/Documents/Projets/Fudd/Lib/wordpress/wp-admin/install.php" -- index.php
+  scriptFile <- newCAString "/bwork/wrkspc/karlin/Projets/Fudd/EasyWordy/Lib/wordpress/wp-admin/install.php" -- index.php
   -- scriptFile <- newCAString "/tmp/test.php"
 
   rezA <- [C.block| char * {

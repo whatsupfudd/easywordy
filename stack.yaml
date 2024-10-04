@@ -18,7 +18,7 @@
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
 resolver:
-  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/11.yaml
+  url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/25.yaml
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,7 +40,14 @@ packages:
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
-# extra-deps: []
+extra-deps:
+  - servant-auth-server-0.4.9.0@sha256:dff8a46a1491b9102323094b3a715ceaaa0b2d450cb81e2e0784bd5c19a7199f,5397
+  - servant-0.20.2@sha256:a4613dc1caa40d1b8db7aff00417dc2d651a8d73a90add3d934218b1778df35c,5371
+  - servant-auth-0.4.2.0@sha256:5fa6b8c2b40deb542d9b2fc2d18ce0c90f7e4a26268f018dd933c8881c23db5f,2211
+  - servant-server-0.20.2@sha256:5a2d11959256fed8f4918f02f55cb597b61cc92191a672cd2d2228fadd5ee0ec,6226
+#  - servant-docs 
+#  - servant-foreign
+
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
@@ -50,6 +57,7 @@ packages:
 
 # Control whether we use the GHC we find on the path
 system-ghc: true
+allow-newer: true
 #
 # Require a specific version of stack, using version ranges
 # require-stack-version: -any # Default
@@ -61,7 +69,7 @@ system-ghc: true
 #
 # Extra directories used by stack for building
 extra-include-dirs: [ ../Lib/php, ../Lib/php/Zend, ../Lib/php/main, ../Lib/php/TSRM ]
-extra-lib-dirs: [ ../Lib/php/libs ]
+extra-lib-dirs: [ ../Lib/php/libs/x86_64-linux ]
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor

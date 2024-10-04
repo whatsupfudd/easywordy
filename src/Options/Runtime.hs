@@ -22,7 +22,7 @@ defaultRun =
   RunOptions {
     debug = 0
     , corsPolicy = Just defaultCorsPolicy
-    , jwkConfFile = Just "/Users/lhugo/.fudd/daniell/jwkConf.json"
+    , jwkConfFile = Just "/bwork/wrkspc/karlin/.fudd/daniell/jwkConf.json"
     , serverPort = 8885
     , serverHost = "localhost"
   }

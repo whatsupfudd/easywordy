@@ -66,9 +66,10 @@ verifyJWT' :: FromJWT a => JWTSettings -> BS.ByteString -> IO (Either Text a)
 verifyJWT' jwtCfg input = do
   verifiedJWT <- liftIO $ runExceptT . withExceptT formJWTError $ do
     unverifiedJWT <- Jose.decodeCompact (BSL.fromStrict input)
+    valKeys <- liftIO $ validationKeys jwtCfg
     Jose.verifyClaims
       (jwtSettingsToJwtValidationSettings jwtCfg)
-      (validationKeys jwtCfg)
+      valKeys
       unverifiedJWT
 
   let eitherResult = verifiedJWT >>= decodeJWT

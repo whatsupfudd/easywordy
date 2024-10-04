@@ -46,7 +46,7 @@ type MainApi = ToServantApi ServerRoutes
 
 data ServerRoutes route = ServerRoutes {
     anonymous :: route :- ToServantApi AnonymousRoutes
-    , wordpress :: route :- ToServantApi WordPressRoutes
+    , wordpress :: route :- ToServantApi TopRoutesWP
     , authenticated :: route :- Auth '[JWT, BasicAuth] ClientInfo :> ToServantApi AuthenticatedRoutes
   }
   deriving stock (Generic)
@@ -56,9 +56,7 @@ data ServerRoutes route = ServerRoutes {
 serveApi ::  Ropt.RunOptions -> IO Application
 serveApi rtOpts = do
   -- TODO: figure out how to turn off JWT authentication.
-  jwtKey <- case rtOpts.jwkConfFile of
-    Nothing -> tmpJWK
-    Just aPath -> readJWK aPath
+  jwtKey <- maybe tmpJWK readJWK rtOpts.jwkConfFile
 
   let
     linkUp :: NonEmpty (a -> a) -> a -> a
@@ -68,9 +66,9 @@ serveApi rtOpts = do
     jwtSettings = Sauth.defaultJWTSettings jwtKey
     -- sessionAuth = validateUser dbPool
     sessionAuth = validateUser
-    
+
     -- For file upload support, will be used later:
-    multipartOpts = (defaultMultipartOptions (Proxy :: Proxy Tmp)) { 
+    multipartOpts = (defaultMultipartOptions (Proxy :: Proxy Tmp)) {
         generalOptions = setMaxRequestKeyLength 512 defaultParseRequestBodyOptions
       }
 
