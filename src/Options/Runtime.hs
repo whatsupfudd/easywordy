@@ -1,11 +1,31 @@
-module Options.Runtime (defaultRun, RunOptions (..)) where
+module Options.Runtime (
+  defaultRun, RunOptions (..)
+  , WpConfig (..), defaultWpConf
+  , module DB.Connect
+
+) where
 -- , DbConfig (..)
 
 -- import Data.Int (Int)
 import Data.Text (Text)
 
 import HttpSup.CorsPolicy (CORSConfig, defaultCorsPolicy)
--- import DB.Connect (DbConfig (..), defaultDbConf)
+import DB.Connect (PgDbConfig (..), defaultPgDbConf, MqlDbConfig (..), defaultMqlDbConf)
+
+
+-- TODO: create a proper Wordpress configuration set:
+defaultWpConf :: WpConfig
+defaultWpConf = WpConfig {
+  rootPath = "../Lib/wordpress"
+  , mqlDbConf = defaultMqlDbConf
+}
+
+
+data WpConfig = WpConfig {
+  rootPath :: FilePath
+  , mqlDbConf :: MqlDbConfig
+  }
+  deriving (Show)
 
 
 data RunOptions = RunOptions {
@@ -14,15 +34,20 @@ data RunOptions = RunOptions {
     , jwkConfFile :: Maybe FilePath
     , serverPort :: Int
     , serverHost :: Text
+    , pgDbConf :: PgDbConfig
+    , wp :: WpConfig
   }
   deriving (Show)
 
-defaultRun :: RunOptions
-defaultRun =
+
+defaultRun :: FilePath -> Text -> Int -> RunOptions
+defaultRun homeDir server port =
   RunOptions {
     debug = 0
     , corsPolicy = Just defaultCorsPolicy
-    , jwkConfFile = Just "/bwork/wrkspc/karlin/.fudd/daniell/jwkConf.json"
-    , serverPort = 8885
-    , serverHost = "localhost"
+    , jwkConfFile = Just (homeDir <> "/jwkConf.json")
+    , serverHost = server
+    , serverPort = port
+    , pgDbConf = defaultPgDbConf
+    , wp = defaultWpConf
   }

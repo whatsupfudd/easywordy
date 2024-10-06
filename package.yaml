@@ -27,6 +27,8 @@ dependencies:
   - text
   - time
   - vector
+  # For Map, ...:
+  - containers
   # For YAML (config file):
   - yaml
   - directory
@@ -74,6 +76,9 @@ dependencies:
   - mmark
   # Inline C:
   - inline-c
+  # MySQL:
+  - mysql-haskell
+  - io-streams
 
 
 default-extensions:

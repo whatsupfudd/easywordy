@@ -36,7 +36,7 @@ data CorsOpts = CorsOpts {
   deriving stock (Show, Generic)
 
 
-data DatabaseOpts = DatabaseOpts {
+data PgDbOpts = DbOpts {
   port :: Maybe Int
   , host :: Maybe String
   , user :: Maybe String
@@ -47,15 +47,34 @@ data DatabaseOpts = DatabaseOpts {
 }
   deriving stock (Show, Generic)
 
+
+data MqlDbOpts = MqlDbOpts {
+  port :: Maybe Int
+  , host :: Maybe String
+  , user :: Maybe String
+  , passwd :: Maybe String
+  , dbase :: Maybe String
+}
+  deriving stock (Show, Generic)
+
+
 data FileOptions = FileOptions {
   debug :: Maybe Int
   , primaryLocale :: Maybe String
-  , db :: Maybe DatabaseOpts
+  , db :: Maybe PgDbOpts
   , server :: Maybe ServerOpts
   , jwt :: Maybe JwtOpts
   , cors :: Maybe CorsOpts
+  , wordpress :: Maybe WpOptions
  }
  deriving stock (Show, Generic)
+
+
+data WpOptions = WpOptions {
+  rootPath :: Maybe FilePath
+  , db :: Maybe MqlDbOpts
+  }
+  deriving stock (Show, Generic)
 
 
 defaultConfName :: FilePath
@@ -72,10 +91,12 @@ defaultConfigFilePath = do
 
 -- YAML support:
 instance Aes.FromJSON FileOptions
-instance Aes.FromJSON DatabaseOpts
+instance Aes.FromJSON PgDbOpts
+instance Aes.FromJSON MqlDbOpts
 instance Aes.FromJSON ServerOpts
 instance Aes.FromJSON JwtOpts
 instance Aes.FromJSON CorsOpts
+instance Aes.FromJSON WpOptions
 
 
 parseFileOptions :: FilePath -> IO (Either String FileOptions)

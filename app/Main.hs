@@ -1,10 +1,13 @@
 module Main where
 
+import Control.Monad (void)
 import qualified Control.Exception as Cexc
+
 import qualified System.Environment as Senv
 import qualified System.IO.Error as Serr
 
-import qualified Options as Opt
+import qualified Options.Cli as Opt
+import qualified Options.ConfFile as Opt
 import qualified MainLogic as Ml
 
 
@@ -29,4 +32,4 @@ main = do
       case mbFileOptions of
         Left errMsg -> putStrLn $ "err: " <> errMsg
         Right fileOptions ->
-          Ml.runWithOptions cliOptions fileOptions >> pure ()
+          void (Ml.runWithOptions cliOptions fileOptions)

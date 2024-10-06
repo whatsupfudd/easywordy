@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -25,7 +25,6 @@ source-repository head
 
 library
   exposed-modules:
-      Api
       Api.Handlers
       Api.Session
       Api.Types
@@ -42,6 +41,7 @@ library
       Options.Cli
       Options.ConfFile
       Options.Runtime
+      ServeApi
       WordPress.ApiTypes
       WordPress.Handlers
       WordPress.Wrapper
@@ -61,6 +61,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , containers
     , directory
     , exceptions
     , filepath
@@ -72,12 +73,14 @@ library
     , http-media
     , http-types
     , inline-c
+    , io-streams
     , jose
     , lens
     , lucid
     , megaparsec
     , mmark
     , mtl
+    , mysql-haskell
     , optparse-applicative
     , postgresql-binary
     , servant
@@ -115,6 +118,7 @@ executable easyverse
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , containers
     , directory
     , easyverse
     , exceptions
@@ -127,12 +131,14 @@ executable easyverse
     , http-media
     , http-types
     , inline-c
+    , io-streams
     , jose
     , lens
     , lucid
     , megaparsec
     , mmark
     , mtl
+    , mysql-haskell
     , optparse-applicative
     , postgresql-binary
     , servant
@@ -171,6 +177,7 @@ test-suite easyverse-test
     , base >=4.7 && <5
     , bytestring
     , case-insensitive
+    , containers
     , directory
     , easyverse
     , exceptions
@@ -183,12 +190,14 @@ test-suite easyverse-test
     , http-media
     , http-types
     , inline-c
+    , io-streams
     , jose
     , lens
     , lucid
     , megaparsec
     , mmark
     , mtl
+    , mysql-haskell
     , optparse-applicative
     , postgresql-binary
     , servant

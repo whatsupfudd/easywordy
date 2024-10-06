@@ -6,8 +6,8 @@ import Data.Text (Text)
 import Options.Applicative
 
 
-data EnvOptions = EnvOptions {
-    home :: Maybe Text
+newtype EnvOptions = EnvOptions {
+    appHome :: Maybe FilePath
   }
 
 data CliOptions = CliOptions {

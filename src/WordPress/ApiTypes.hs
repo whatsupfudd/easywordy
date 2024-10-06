@@ -58,6 +58,10 @@ data PostComment = PostComment {
   }
   deriving (Show, Generic, FromForm)
 
+data InstallPost = InstallPost {
+    language :: Maybe Text
+  }
+  deriving (Show, Generic, FromForm)
 
 data TopRoutesWP mode = TopRoutesWP {
     -- CMS (content and operations):
@@ -84,6 +88,8 @@ data TopRoutesWP mode = TopRoutesWP {
     , trackback :: mode :- "wp-trackback.php" :> ReqBody '[FormUrlEncoded] Trackback :> Post '[HTML] Html
     -- External bookkeeping:
     , cron :: mode :- "wp-cron.php" :> Get '[HTML] Html
+    -- EasyWordy own stuff:
+    , easywordy :: mode :- "zhpr" :> ToServantApi EasyWordyRoutes
   }
   deriving stock (Generic)
 
@@ -137,5 +143,18 @@ data AdminRoutesWP mode = AdminRoutesWP {
       -- Ajax API endpoints:
       , ajaxAdmin :: mode :- "admin-ajax.php" :> Get '[HTML] Html
       , commentAdmin :: mode :- "comment.php" :> Capture "id" Int :> Get '[HTML] Html
+      -- Initial install logic:
+      , installGet :: mode :- "install.php" :> Get '[HTML] Html
+      , installPost :: mode :- "install.php" :> QueryParam' '[Optional, Lenient] "step" Int :> ReqBody '[FormUrlEncoded] InstallPost :> Post '[HTML] Html
+
   }
   deriving stock (Generic)
+
+
+data EasyWordyRoutes mode = EasyWordyRoutes {
+    rootZP :: mode :- Get '[HTML] Html
+    , indexZP :: mode :- "index.php" :> Get '[HTML] Html
+  }
+  deriving stock (Generic)
+
+

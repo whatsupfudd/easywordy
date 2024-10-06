@@ -33,7 +33,8 @@ import Servant.Server.Generic (AsServerT, genericServerT)
 import Servant.API.Generic ((:-), ToServantApi, ToServant)
 import Servant.API ((:>), ReqBody, JSON, Capture, Post, Get)
 
--- import Hasql.Pool (Pool)
+import Hasql.Pool (Pool)
+import Database.MySQL.Base (MySQLConn)
 
 import qualified Options.Runtime as Rt
 
@@ -86,7 +87,8 @@ newtype Html = Html { html :: ByteString }
 data AppEnv = AppEnv {
     config_Ctxt :: Rt.RunOptions
     , jwt_Ctxt :: JWTSettings
-    -- , dbPool_Ctxt :: Pool
+    , pgPool_Ctxt :: Pool
+    , mqlConn_Ctxt :: MySQLConn
   }
 
 

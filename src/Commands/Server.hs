@@ -1,34 +1,49 @@
 module Commands.Server where
 
 import Network.Wai.Handler.Warp as Wrp
-import Control.Monad.Cont (runContT)
 
 import Control.Exception (bracket)
-import Control.Monad.Cont (ContT (..))    -- liftIO
+import Control.Monad.Cont (runContT, ContT (..))    -- liftIO
 
--- import DB.Connect (start)
-import Api (serveApi)
+import System.Posix (installHandler)
+
+
+import Database.MySQL.Base (connect, defaultConnectInfo, query_, ConnectInfo(..))
+
+
+import ServeApi (serveApi)
 import Api.Handlers (setupWai)
+import WordPress.Wrapper (invokeFile)
+import DB.Connect (startMql, startPg)
 import Options.Runtime as Rto
+
 
 serverCmd :: Rto.RunOptions -> IO ()
 serverCmd rtOpts = do
   putStrLn $ "@[serverHu] starting, opts: " <> show rtOpts
-  runContT (fakeBgTask) mainAction     --  (start rtOpts.db)
+  putStrLn "tests done."
+  let
+    mqlConn = startMql rtOpts.wp.mqlDbConf
+    pgPool = startPg rtOpts.pgDbConf
+    contArgs = (,) <$> pgPool <*> mqlConn
+  runContT contArgs mainAction     --  (start rtOpts.db)
   where
-  mainAction _ = do
-    let shutdownHandler = putStrLn "@[Servant.run] Terminating..."
-        settings = setupWai rtOpts.serverPort rtOpts.serverHost shutdownHandler
-    webHandler <- serveApi rtOpts -- dbPool
+  mainAction (pgPool, mqlConn) = do
+    let 
+      settings = setupWai rtOpts.serverPort rtOpts.serverHost globalShutdownHandler
+    webHandler <- serveApi rtOpts pgPool mqlConn
     Wrp.runSettings settings webHandler
     putStrLn $ "@[serverHu] ending."
     pure ()
+  globalShutdownHandler =
+    putStrLn "@[globalShutdownHandler] done."
 
 
-fakeBgTask :: ContT r IO ()
-fakeBgTask =
+mainBgTask :: ContT r IO ()
+mainBgTask =
   let
-    fakeStart = putStrLn "starting fake bg thread."
-    fakeFinish _ = putStrLn "finishing fake bg thread."
+    defaultStart = putStrLn "@[mainBgTask] Starting default bg thread."
+    defaultFinish _ = putStrLn "@[mainBgTask] finishing default bg thread."
   in do
-  ContT $ bracket fakeStart fakeFinish
+  ContT $ bracket defaultStart defaultFinish
+

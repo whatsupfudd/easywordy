@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Api where
+module ServeApi where
 
 import Control.Monad.Except (ExceptT, MonadError, withExceptT)
 import Control.Monad.Reader (runReaderT)
@@ -30,6 +30,9 @@ import Network.Wai (Application)
 import Network.Wai.Parse (setMaxRequestKeyLength, defaultParseRequestBodyOptions)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 
+import Database.MySQL.Base (MySQLConn)
+import Hasql.Pool (Pool)
+
 import HttpSup.JWT (readJWK, tmpJWK)
 import HttpSup.CorsPolicy (setCorsPolicy)
 import Api.Types
@@ -37,6 +40,7 @@ import Api.Session (validateUser)
 import Api.Handlers (anonHandlers, authHandlers)
 import WordPress.ApiTypes
 import WordPress.Handlers (wordpressHandlers)
+import WordPress.Wrapper (initPhpContext)
 import Options.Runtime as Ropt
 
 
@@ -53,8 +57,8 @@ data ServerRoutes route = ServerRoutes {
 
 
 -- serveApi ::  Ropt.RunOptions -> Pool -> IO Application
-serveApi ::  Ropt.RunOptions -> IO Application
-serveApi rtOpts = do
+serveApi ::  Ropt.RunOptions -> Pool -> MySQLConn -> IO Application
+serveApi rtOpts pgPool mqlConn = do
   -- TODO: figure out how to turn off JWT authentication.
   jwtKey <- maybe tmpJWK readJWK rtOpts.jwkConfFile
 
@@ -82,11 +86,12 @@ serveApi rtOpts = do
     -- TODO: add errorMw @JSON @'["message", "status"] when Servant.Errors is compatible with aeson-2.
     -- TODO: enable corsMiddleware based on rtOpts.
     -- appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, dbPool_Ctxt = dbPool }
-    appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings }
+    appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, pgPool_Ctxt = pgPool, mqlConn_Ctxt = mqlConn }
     server = hoistServerWithContext serverApiProxy apiContextP (apiAsHandler appEnv) serverApiT
 
   putStrLn "@[serveApi] got jwt keys."
   putStrLn $ "@[serveApi] listening on port " <> show rtOpts.serverPort <> "."
+  initPhpContext
   pure $ middlewares $ serveWithContext serverApiProxy apiContext server
 
 

@@ -5,6 +5,8 @@ import Data.Text (pack)
 import qualified System.Environment as Env
 
 import qualified Options as Opt
+import qualified Options.Cli as Opt (CliOptions (..), EnvOptions (..), Command (..))
+import qualified Options.ConfFile as Opt (FileOptions (..))
 import Commands as Cmd
 
 
@@ -20,16 +22,16 @@ runWithOptions cliOptions fileOptions = do
       mbHome <- Env.lookupEnv "easyverseHOME"
       let
         envOptions = Opt.EnvOptions {
-            home = pack <$> mbHome
+            appHome = mbHome
             -- TODO: put additional env vars.
           }
-        rtOptions = Opt.mergeOptions cliOptions fileOptions envOptions 
-        -- switchboard to command executors:
         cmdExecutor =
           case aJob of
             Opt.HelpCmd -> Cmd.helpCmd
             Opt.VersionCmd -> Cmd.versionCmd
             Opt.ServerCmd -> Cmd.serverCmd
+      rtOptions <- Opt.mergeOptions cliOptions fileOptions envOptions 
+        -- switchboard to command executors:
       result <- cmdExecutor rtOptions
       -- TODO: return a properly kind of conclusion.
       pure ()
