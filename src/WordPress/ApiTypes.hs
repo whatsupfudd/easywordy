@@ -11,11 +11,14 @@ module WordPress.ApiTypes where
 import Data.Text (Text)
 import GHC.Generics
 
+import qualified Network.WebSockets as WS
+
 import Servant.API ((:>), Capture, Post, Get, QueryParam', ReqBody, FormUrlEncoded, NamedRoutes)
 import Servant.API.QueryParam (QueryParam')
 import Servant.API.Modifiers (Optional, Strict, Lenient)
 import Servant.API.Generic ((:-), ToServantApi)
 import Web.FormUrlEncoded (FromForm (..), parseUnique)
+import Servant.API.WebSocket (WebSocket)
 
 import Data.Aeson (FromJSON)
 
@@ -63,6 +66,13 @@ data InstallPost = InstallPost {
   }
   deriving (Show, Generic, FromForm)
 
+newtype SearchContent = SearchContent {
+    search :: Text
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromForm)
+
+
 data TopRoutesWP mode = TopRoutesWP {
     -- CMS (content and operations):
       admin :: mode :- "wp-admin" :> ToServantApi AdminRoutesWP
@@ -90,6 +100,10 @@ data TopRoutesWP mode = TopRoutesWP {
     , cron :: mode :- "wp-cron.php" :> Get '[HTML] Html
     -- EasyWordy own stuff:
     , easywordy :: mode :- "zhpr" :> ToServantApi EasyWordyRoutes
+    , demoWs :: mode :- "demo-ws" :> Get '[HTML] Html
+    , demoSrch :: mode :- "xsearch" :> ReqBody '[FormUrlEncoded] SearchContent :> Post '[HTML] Html
+    , xStatic :: mode :- "xstatic" :> Capture "path" String :> Get '[HTML] Html
+    , wsStream :: mode :- "stream" :> WebSocket
   }
   deriving stock (Generic)
 

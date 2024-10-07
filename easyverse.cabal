@@ -42,6 +42,8 @@ library
       Options.ConfFile
       Options.Runtime
       ServeApi
+      Wapp.DemoPage
+      Wapp.MockData
       WordPress.ApiTypes
       WordPress.Handlers
       WordPress.Wrapper
@@ -59,6 +61,10 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , blaze-html
+    , blaze-htmx
+    , blaze-markup
+    , blaze-svg
     , bytestring
     , case-insensitive
     , containers
@@ -83,11 +89,14 @@ library
     , mysql-haskell
     , optparse-applicative
     , postgresql-binary
+    , safe-exceptions
     , servant
     , servant-auth
     , servant-auth-server
+    , servant-htmx
     , servant-multipart
     , servant-server
+    , servant-websockets
     , streaming-commons
     , text
     , time
@@ -97,6 +106,7 @@ library
     , wai-cors
     , wai-extra
     , warp
+    , websockets
     , yaml
   default-language: Haskell2010
 
@@ -116,6 +126,10 @@ executable easyverse
   build-depends:
       aeson
     , base >=4.7 && <5
+    , blaze-html
+    , blaze-htmx
+    , blaze-markup
+    , blaze-svg
     , bytestring
     , case-insensitive
     , containers
@@ -141,11 +155,14 @@ executable easyverse
     , mysql-haskell
     , optparse-applicative
     , postgresql-binary
+    , safe-exceptions
     , servant
     , servant-auth
     , servant-auth-server
+    , servant-htmx
     , servant-multipart
     , servant-server
+    , servant-websockets
     , streaming-commons
     , text
     , time
@@ -155,6 +172,7 @@ executable easyverse
     , wai-cors
     , wai-extra
     , warp
+    , websockets
     , yaml
   default-language: Haskell2010
 
@@ -175,6 +193,10 @@ test-suite easyverse-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , blaze-html
+    , blaze-htmx
+    , blaze-markup
+    , blaze-svg
     , bytestring
     , case-insensitive
     , containers
@@ -200,11 +222,14 @@ test-suite easyverse-test
     , mysql-haskell
     , optparse-applicative
     , postgresql-binary
+    , safe-exceptions
     , servant
     , servant-auth
     , servant-auth-server
+    , servant-htmx
     , servant-multipart
     , servant-server
+    , servant-websockets
     , streaming-commons
     , text
     , time
@@ -214,5 +239,6 @@ test-suite easyverse-test
     , wai-cors
     , wai-extra
     , warp
+    , websockets
     , yaml
   default-language: Haskell2010

@@ -1,14 +1,35 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 module WordPress.Handlers where
 
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (asks)
+import Control.Exception.Safe (tryAny)
+import Control.Monad (forever, void)
 
+import qualified Data.ByteString.Lazy as LBS
+import Data.ByteString (ByteString)
 import qualified Data.Map as Mp
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 
+import GHC.Generics
+
+import qualified Network.WebSockets as WS
+
+import Data.Aeson (FromJSON, ToJSON, Value (Object), (.:), (.:?), (.=), parseJSON, eitherDecode)
+
 import Servant.API.Generic (ToServant)
 import Servant.Server.Generic (AsServerT, genericServerT)
+import Servant.API.WebSocket (WebSocket)
+
+import qualified Text.Blaze.Html.Renderer.Utf8 as H
+import qualified Text.Blaze.Html5 as H
+
+
+import Wapp.DemoPage (demoPage, demoSearch, demoReply)
+import Wapp.MockData (projectList)
 
 import Api.Types
 import WordPress.ApiTypes
@@ -28,6 +49,10 @@ wordpressHandlers =
     , trackback = fakeWpHandlerTrackBack -- WP.trackbackHandler
     , cron = fakeWpHandler -- WP.cronHandler
     , easywordy = easywordyHandlers -- EasyWordy.easywordyHandler
+    , demoWs = testWS -- WP.demoWsHandler
+    , demoSrch = demoSearchHandler -- WP.demoSearchHandler
+    , xStatic = xStaticHandler -- WP.xStaticHandler
+    , wsStream = wsStreamHandler -- WP.wsStreamHandler
   }
 
 
@@ -196,3 +221,85 @@ indexHdZP :: EasyVerseApp Html
 indexHdZP =
   pure . Html $ "<html><head><title>EASY VERSE</title></head><body>Index.</body></html>"
 
+
+wsStreamHandler :: MonadIO m => WS.Connection -> m ()
+wsStreamHandler conn = do
+  liftIO $ WS.withPingThread conn 30 (pure ()) $ do
+    -- liftIO $ WS.sendTextData conn ("<div id=\"notifications\" hx-swap-oob=\"beforeend\">Some message</div?" :: ByteString)
+    handleClient
+  where
+    handleClient = do
+      rezA <- tryAny $ forever receiveStream
+      case rezA of
+        Left err -> do
+          liftIO . putStrLn $ "@[streamHandler] situation: " <> show err
+          closeConnection
+        Right _ -> do
+          liftIO $ putStrLn "@[streamHandler] client disconnected."
+          pure ()
+
+    receiveStream = do
+      rezA <- WS.receiveDataMessage conn
+      case rezA of
+        WS.Text msg decodedMsg ->
+          let
+            hxMsg = eitherDecode msg :: Either String HxWsMessage
+          in
+          case hxMsg of
+            Left err -> do
+              putStrLn $ "@[receiveStream] invalid HxWsMessage: " <> (unpack . decodeUtf8 . LBS.toStrict) msg
+              putStrLn $ "@[receiveStream] error: " <> show err
+            Right hxMsg ->
+              WS.sendTextData conn $ H.renderHtml $ demoReply hxMsg.wsMessage
+        WS.Binary msg ->
+          putStrLn "@[receiveStream] received binary."
+    
+    closeConnection = do
+      WS.sendClose conn ("Bye" :: ByteString)
+      void $ WS.receiveDataMessage conn
+
+
+data HxWsHeaders = HxWsHeaders {
+    request :: Text
+    , trigger :: Text
+    , triggerName :: Maybe Text
+    , target :: Text
+    , currentURL :: Text
+  }
+  deriving stock (Show, Generic)
+
+instance FromJSON HxWsHeaders where
+  parseJSON (Object obj) = HxWsHeaders <$>
+    obj .: "HX-Request"
+    <*> obj .: "HX-Trigger"
+    <*> obj .:? "HX-Trigger-Name"
+    <*> obj .: "HX-Target"
+    <*> obj .: "HX-Current-URL"
+
+
+data HxWsMessage = HxWsMessage {
+    wsMessage :: Text
+    , headers :: HxWsHeaders
+  }
+  deriving (Show, Generic)
+
+
+instance FromJSON HxWsMessage where
+  parseJSON (Object obj) = HxWsMessage <$>
+    obj .: "ws-message"
+    <*> obj .: "HEADERS"
+
+-- TMP DEMO:
+demoSearchHandler :: SearchContent -> EasyVerseApp Html
+demoSearchHandler needle = do
+  pure . Html . LBS.toStrict . H.renderHtml $ demoSearch projectList needle.search
+
+testWS :: EasyVerseApp Html
+testWS = do
+  pure . Html . LBS.toStrict . H.renderHtml $ demoPage "First Test Page WS." []
+
+xStaticHandler :: String -> EasyVerseApp Html
+xStaticHandler pageUrl = do
+  liftIO . putStrLn $ "@[xStaticHandler] pageUrl: " <> pageUrl
+  pageContent <- liftIO $ LBS.readFile ("xstatic/" <> pageUrl)
+  pure . Html . LBS.toStrict $ pageContent

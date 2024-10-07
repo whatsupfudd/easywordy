@@ -79,6 +79,20 @@ dependencies:
   # MySQL:
   - mysql-haskell
   - io-streams
+  # For WebSockets/HTMX:
+  - websockets
+  - servant-websockets
+  - servant-htmx
+  # For HTML rendering:
+  - blaze-html
+  - blaze-htmx
+  - blaze-svg
+  - blaze-markup
+  # For safe exceptions:
+  - safe-exceptions
+
+
+  
 
 
 default-extensions:

@@ -111,7 +111,7 @@ asServantError error =
     UnknownSituationAE msg -> err500 { errBody = LBS.fromStrict . encodeUtf8 $ msg }
 
 
--- Main Applicaiton / handler for the API:
+-- Main Application / handler for the API:
 newtype EasyVerseApp api = EasyVerseApp {
      apiHandler :: ReaderT AppEnv (ExceptT ApiError IO) api
   }
