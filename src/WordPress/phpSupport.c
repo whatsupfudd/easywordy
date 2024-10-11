@@ -44,6 +44,30 @@ static void initGlobalBuffer() {
   }
 }
 
+static size_t haskellSapiUbWrite(const char *str, size_t str_length)
+{
+  /*
+  request_rec *r;
+	php_struct *ctx;
+
+	ctx = SG(server_context);
+	r = ctx->r;
+  */
+  Buffer *buf = globalBuffer;
+
+  while (buf->len + str_length >= buf->cap) {
+    buf->cap += CAP_INCREMENT;
+    buf->data = realloc(buf->data, buf->cap);
+    if (!buf->data) return 0;  // realloc failed
+  }
+  memcpy(buf->data + buf->len, str, str_length);
+  buf->len += str_length;
+  buf->data[buf->len] = '\0';  // Null-terminate the string
+
+	return str_length; /* we always consume all the data passed to us. */
+}
+
+
 
 void initializeSapiContext() {
   /* ChatGPT suggested:
@@ -108,28 +132,6 @@ void populateGetVariables() {
   // sapi_module.treat_data(PARGE_GET, estrdup(SG(request_info). query_string), NULL, TSRMLS_CC);
 }
 
-static size_t haskellSapiUbWrite(const char *str, size_t str_length)
-{
-  /*
-  request_rec *r;
-	php_struct *ctx;
-
-	ctx = SG(server_context);
-	r = ctx->r;
-  */
-  Buffer *buf = globalBuffer;
-
-  while (buf->len + str_length >= buf->cap) {
-    buf->cap += CAP_INCREMENT;
-    buf->data = realloc(buf->data, buf->cap);
-    if (!buf->data) return 0;  // realloc failed
-  }
-  memcpy(buf->data + buf->len, str, str_length);
-  buf->len += str_length;
-  buf->data[buf->len] = '\0';  // Null-terminate the string
-
-	return str_length; /* we always consume all the data passed to us. */
-}
 
 static char *getGlobalBuffer() {
   globalBuffer->len = 0;

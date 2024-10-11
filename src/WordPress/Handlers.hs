@@ -9,7 +9,9 @@ import Control.Exception.Safe (tryAny)
 import Control.Monad (forever, void)
 
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as Bs
 import Data.ByteString (ByteString)
+import qualified Data.List as L
 import qualified Data.Map as Mp
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
@@ -23,6 +25,7 @@ import Data.Aeson (FromJSON, ToJSON, Value (Object), (.:), (.:?), (.=), parseJSO
 import Servant.API.Generic (ToServant)
 import Servant.Server.Generic (AsServerT, genericServerT)
 import Servant.API.WebSocket (WebSocket)
+import Network.HTTP.Types.URI (QueryItem)
 
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
@@ -30,6 +33,8 @@ import qualified Text.Blaze.Html5 as H
 
 import Wapp.DemoPage (demoPage, demoSearch, demoReply)
 import Wapp.MockData (projectList)
+
+import Options.Runtime (RunOptions (..), WpConfig (..))
 
 import Api.Types
 import WordPress.ApiTypes
@@ -40,6 +45,7 @@ wordpressHandlers :: ToServant TopRoutesWP (AsServerT EasyVerseApp)
 wordpressHandlers =
   genericServerT $ TopRoutesWP {
     admin = adminHandlers -- WP.adminHandler
+    , includes = includesHandlers -- Includes.includesHandler
     , homePage = fakeWpHandler -- WP.indexHandler
     , indexGet = indexHandler -- WP.indexHandler
     , indexPost = indexReactor -- WP.indexHandler
@@ -47,12 +53,8 @@ wordpressHandlers =
     , signup = fakeWpHandler -- WP.signupHandler
     , xmlRpc = fakeWpHandler -- WP.xmlRpcHandler
     , trackback = fakeWpHandlerTrackBack -- WP.trackbackHandler
-    , cron = fakeWpHandler -- WP.cronHandler
+    , cron = cronHandler
     , easywordy = easywordyHandlers -- EasyWordy.easywordyHandler
-    , demoWs = testWS -- WP.demoWsHandler
-    , demoSrch = demoSearchHandler -- WP.demoSearchHandler
-    , xStatic = xStaticHandler -- WP.xStaticHandler
-    , wsStream = wsStreamHandler -- WP.wsStreamHandler
   }
 
 
@@ -98,6 +100,25 @@ adminHandlers =
     , installPost = installHandler -- WP.installHandler
   }
 
+includesHandlers :: ToServant IncludesRoutes (AsServerT EasyVerseApp)
+includesHandlers =
+  genericServerT $ IncludesRoutes {
+    catchAll = catchAllPathHandler
+  }
+
+catchAllPathHandler :: [String] -> [ QueryItem ] -> EasyVerseApp Html
+catchAllPathHandler aPath aQuery = do
+  rtOpts <- asks config_Ctxt
+  let
+    fullPath = rtOpts.wp.rootPath <> "/wp-includes/" <> L.intercalate "/" aPath
+  -- _ <- liftIO . putStrLn $ "@[catchAllPathHandler] fullPath: " <> fullPath <> " query: " <> show aQuery
+  fileContent <- liftIO $ Bs.readFile fullPath
+  pure . Html $ fileContent
+
+cronHandler :: Maybe (Either Text Text) -> EasyVerseApp Html
+cronHandler mbDoingWpCron = do
+  pure . Html $ "<html><head><title>EASY VERSE</title></head><body>Doing cron.</body></html>"
+
 fakeWpHandler :: EasyVerseApp Html
 fakeWpHandler = do
   _ <- liftIO $ putStrLn "@[fakeWpHandler]"
@@ -135,7 +156,7 @@ adminHandler aPath argMap = do
     targetUrl = case aPath of
       "" -> "wp-admin/index.php"
       _ -> "wp-admin/" <> aPath
-  aStr <- liftIO $ invokeFile rtOpts targetUrl argMap
+  (aStr, duration) <- liftIO $ invokeFile rtOpts targetUrl argMap
   pure . Html $ aStr
 
 
@@ -159,7 +180,7 @@ indexHandler mbPostID mbPageID mbCatID mbTagName mbSearchTerm mbDate mbAuthorID 
           pure . Html $ "<html><head><title>EASY VERSE</title></head><body> pageID param err: " <> encodeUtf8 errMsg <> "</body></html>"
         Right postID -> do
           rtOpts <- asks config_Ctxt
-          aStr <- liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "p" (show postID))
+          (aStr, duration) <- liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "p" (show postID))
           pure . Html $ aStr
 
 
@@ -167,12 +188,15 @@ indexReactor :: Maybe (Either Text Int) -> IndexPosting -> EasyVerseApp Html
 indexReactor mbStepID reqData = do
   _ <- liftIO . putStrLn $ "@[indexReactor] reqData: " <> show reqData
   rtOpts <- asks config_Ctxt
-  result <- case mbStepID of
-      Nothing -> pure "<html><head><title>EASY VERSE</title></head><body><nil></body></html>"
+  (result, duration) <- case mbStepID of
+      Nothing -> pure ("<html><head><title>EASY VERSE</title></head><body><nil></body></html>", 0)
       Just eiNumber -> case eiNumber of
-        Left errMsg -> pure $ "<html><head><title>EASY VERSE</title></head><body>err: " <> encodeUtf8 errMsg <> "</body></html>"
+        Left errMsg ->
+          let msg = "<html><head><title>EASY VERSE</title></head><body>err: " <> encodeUtf8 errMsg <> "</body></html>"
+          in pure (msg, 0)
         Right aVal -> do
-          liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "step" (show aVal))
+          (result, duration) <- liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "step" (show aVal))
+          pure (result, duration)
   {-
     resultPost =
       case reqData of
@@ -187,18 +211,23 @@ indexReactor mbStepID reqData = do
 startInstall :: EasyVerseApp Html
 startInstall = do
   rtOpts <- asks config_Ctxt
-  liftIO $ Html <$> invokeFile rtOpts "/wp-admin/install.php" Mp.empty
+  (result, duration) <- liftIO $ invokeFile rtOpts "/wp-admin/install.php" Mp.empty
+  pure $ Html result
 
 
 installHandler :: Maybe (Either Text Int) -> InstallPost -> EasyVerseApp Html
 installHandler mbStepID reqData = do
   _ <- liftIO . putStrLn $ "@[installHandler] mbStepID: " <> show mbStepID
   rtOpts <- asks config_Ctxt
-  result <- case mbStepID of
+  (result, duration) <- case mbStepID of
     Nothing -> do
       liftIO $ invokeFile rtOpts "/wp-admin/install.php" Mp.empty
     Just eiNumber -> case eiNumber of
-      Left errMsg -> pure $ "<html><head><title>EASY VERSE</title></head><body>err: " <> encodeUtf8 errMsg <> "</body></html>"
+      Left errMsg ->
+        let
+          msg = "<html><head><title>EASY VERSE</title></head><body>err: " <> encodeUtf8 errMsg <> "</body></html>"
+        in
+        pure (msg, 0)
       Right number -> do
         liftIO . putStrLn $ "@[installHandler] number: " <> show number
         liftIO $ invokeFile rtOpts "/wp-admin/install.php" (Mp.singleton "step" (show number))
@@ -211,6 +240,10 @@ easywordyHandlers =
   genericServerT $ EasyWordyRoutes {
     rootZP = welcomeHdZP
     , indexZP = indexHdZP
+    , demoWs = testWS -- WP.demoWsHandler
+    , demoSrch = demoSearchHandler -- WP.demoSearchHandler
+    , xStatic = xStaticHandler -- WP.xStaticHandler
+    , wsStream = wsStreamHandler -- WP.wsStreamHandler
   }
 
 welcomeHdZP :: EasyVerseApp Html
@@ -286,7 +319,7 @@ data HxWsMessage = HxWsMessage {
 
 instance FromJSON HxWsMessage where
   parseJSON (Object obj) = HxWsMessage <$>
-    obj .: "ws-message"
+    obj .: "hxid-1"
     <*> obj .: "HEADERS"
 
 -- TMP DEMO:

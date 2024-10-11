@@ -7,8 +7,10 @@ import qualified Data.ByteString.Char8 as B
 -- import Data.IORef (IORef, modifyIORef', readIORef, newIORef)
 import qualified Data.Map as Mp
 
+import Data.Time.Clock (getCurrentTime, diffUTCTime, NominalDiffTime)
+
 import Foreign.C.Types
-import Foreign.C.String (newCAString)
+import Foreign.C.String (newCAString, CString)
 import Foreign.Ptr (Ptr)
 
 import qualified Language.C.Inline as C
@@ -33,8 +35,8 @@ C.include "ext/standard/info.h"
 C.include "phpSupport.c"
 
 -- | Global initialization routine, runs once per process.
-initPhpContext :: IO ()
-initPhpContext = do
+startupPhp :: IO ()
+startupPhp = do
   [C.block| void {
     initGlobalBuffer();
 
@@ -53,13 +55,85 @@ shutdownPhp =
   pure ()
 
 -- | Request initialization routine, runs once per request.
-initRequest :: IO ()
-initRequest = 
+requestInit :: IO ()
+requestInit = pure ()
+
+
+requestShutdown :: IO ()
+requestShutdown = 
   pure ()
 
-shutdownRequest :: IO ()
-shutdownRequest = 
-  pure ()
+
+tRegisterVariable :: Ptr CString -> Ptr () -> IO ()
+tRegisterVariable argv tvArray = do
+  [C.block| void {
+      php_register_variable("PHP_SELF", $(char ** argv)[0], NULL);
+      php_register_variable("SCRIPT_FILENAME", $(char ** argv)[0], $(void * tvArray));
+      php_register_variable("HTTP_HOST", "ledna", $(void * tvArray));
+      php_register_variable("SERVER_NAME", "ledna", $(void * tvArray));
+    }
+  |]
+  return ()
+
+
+invokeFile :: Rt.RunOptions -> String -> Mp.Map String String -> IO (ByteString, NominalDiffTime)
+invokeFile rtOpts urlPath argMap = do
+  putStrLn $ "@[invokeFile] urlPath: " <> urlPath
+  scriptFile <- newCAString $ rtOpts.wp.rootPath <> "/" <> urlPath
+
+  requestInit
+  startTime <- getCurrentTime
+  [C.block| void {
+    int argc = 1;
+    char *scriptPath[2];
+    char **argv = scriptPath;
+    scriptPath[0] = $(char * scriptFile);
+    scriptPath[1] = "ledna";
+
+    initGlobalBuffer();
+    php_embed_module.ub_write = haskellSapiUbWrite;
+    php_embed_module.register_server_variables = haskellSapiRegisterVariables;
+
+    // PHP_EMBED_START_BLOCK(argc, argv)
+
+    // Using the php_embed_init() function directly instead of the PHP_EMBED_START_BLOCK macro:
+    php_embed_init(argc, argv);
+    zend_first_try {
+
+      zval track_vars_array, *tvArrayPtr;
+      tvArrayPtr = &track_vars_array;
+      (void)$fun:(void (*tRegisterVariable)(char ** argv, void * tvArrayPtr));
+      /*
+      php_register_variable("PHP_SELF", argv[0], NULL);
+      php_register_variable("SCRIPT_FILENAME", argv[0], &track_vars_array);
+      php_register_variable("HTTP_HOST", argv[0], &track_vars_array);
+      */
+      zend_file_handle file_handle;
+      zend_stream_init_filename(&file_handle, argv[0]);
+
+      if (! php_execute_script(&file_handle)) {
+        php_printf("Script exec failed.\n");
+      }
+    } zend_catch {
+      /* int exit_status = EG(exit_status); */
+    } zend_end_try();
+    php_embed_shutdown();
+
+    // PHP_EMBED_END_BLOCK()
+
+    // return getGlobalBuffer();
+  } |]
+  requestShutdown
+  endTime <- getCurrentTime
+  let elapsedTime = endTime `diffUTCTime` startTime
+  putStrLn $ "@[invokeFile] time: " <> show elapsedTime
+  (,) <$> flushTextBuffer <*> pure elapsedTime
+  -- C.free rezA
+  -- rezStr <- readIORef buf
+
+flushTextBuffer :: IO ByteString
+flushTextBuffer =
+  B.packCString =<< [C.exp| char * { getGlobalBuffer() } |]
 
 
 invoke :: String -> IO ByteString
@@ -91,54 +165,6 @@ invoke aString = do
     return getGlobalBuffer();
     } |]
   B.packCString rezA
-
-
-invokeFile :: Rt.RunOptions -> String -> Mp.Map String String -> IO ByteString
-invokeFile rtOpts urlPath argMap = do
-  initRequest
-  putStrLn $ "@[invokeFile] urlPath: " <> urlPath
-  scriptFile <- newCAString $ rtOpts.wp.rootPath <> "/" <> urlPath
-
-  rezA <- [C.block| char * {
-    int argc = 1;
-    char *scriptPath[2];
-    char **argv = scriptPath;
-    scriptPath[0] = $(char * scriptFile);
-
-    initGlobalBuffer();
-    php_embed_module.ub_write = haskellSapiUbWrite;
-    php_embed_module.register_server_variables = haskellSapiRegisterVariables;
-
-    // PHP_EMBED_START_BLOCK(argc, argv)
-
-    // Using the php_embed_init() function directly instead of the PHP_EMBED_START_BLOCK macro:
-    php_embed_init(argc, argv);
-    zend_first_try {
-
-      zval track_vars_array;
-
-      php_register_variable("PHP_SELF", argv[0], NULL);
-      php_register_variable("SCRIPT_FILENAME", argv[0], &track_vars_array);
-      php_register_variable("HTTP_HOST", argv[0], &track_vars_array);
-
-      zend_file_handle file_handle;
-      zend_stream_init_filename(&file_handle, argv[0]);
-
-      if (! php_execute_script(&file_handle)) {
-        php_printf("Script exec failed.\n");
-      }
-    } zend_catch {
-      /* int exit_status = EG(exit_status); */
-    } zend_end_try();
-    php_embed_shutdown();
-
-    // PHP_EMBED_END_BLOCK()
-
-    return getGlobalBuffer();
-  } |]
-  B.packCString rezA
-  -- C.free rezA
-  -- rezStr <- readIORef buf
 
 
 {-

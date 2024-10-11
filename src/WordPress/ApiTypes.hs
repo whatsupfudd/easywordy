@@ -13,7 +13,7 @@ import GHC.Generics
 
 import qualified Network.WebSockets as WS
 
-import Servant.API ((:>), Capture, Post, Get, QueryParam', ReqBody, FormUrlEncoded, NamedRoutes)
+import Servant.API ((:>), Capture, CaptureAll, Post, Get, QueryParam', QueryString, ReqBody, FormUrlEncoded, NamedRoutes)
 import Servant.API.QueryParam (QueryParam')
 import Servant.API.Modifiers (Optional, Strict, Lenient)
 import Servant.API.Generic ((:-), ToServantApi)
@@ -76,6 +76,8 @@ newtype SearchContent = SearchContent {
 data TopRoutesWP mode = TopRoutesWP {
     -- CMS (content and operations):
       admin :: mode :- "wp-admin" :> ToServantApi AdminRoutesWP
+    -- Includes:
+    , includes :: mode :- "wp-includes" :> ToServantApi IncludesRoutes
     -- Basic content delivery:
     , homePage :: mode :- Get '[HTML] Html
     , indexGet :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int
@@ -97,13 +99,9 @@ data TopRoutesWP mode = TopRoutesWP {
     -- Posting:
     , trackback :: mode :- "wp-trackback.php" :> ReqBody '[FormUrlEncoded] Trackback :> Post '[HTML] Html
     -- External bookkeeping:
-    , cron :: mode :- "wp-cron.php" :> Get '[HTML] Html
+    , cron :: mode :- "wp-cron.php" :> QueryParam' '[Optional, Lenient] "doing_wp_cron" Text :> Post '[HTML] Html
     -- EasyWordy own stuff:
     , easywordy :: mode :- "zhpr" :> ToServantApi EasyWordyRoutes
-    , demoWs :: mode :- "demo-ws" :> Get '[HTML] Html
-    , demoSrch :: mode :- "xsearch" :> ReqBody '[FormUrlEncoded] SearchContent :> Post '[HTML] Html
-    , xStatic :: mode :- "xstatic" :> Capture "path" String :> Get '[HTML] Html
-    , wsStream :: mode :- "stream" :> WebSocket
   }
   deriving stock (Generic)
 
@@ -168,7 +166,15 @@ data AdminRoutesWP mode = AdminRoutesWP {
 data EasyWordyRoutes mode = EasyWordyRoutes {
     rootZP :: mode :- Get '[HTML] Html
     , indexZP :: mode :- "index.php" :> Get '[HTML] Html
+    , demoWs :: mode :- "demo-ws" :> Get '[HTML] Html
+    , demoSrch :: mode :- "xsearch" :> ReqBody '[FormUrlEncoded] SearchContent :> Post '[HTML] Html
+    , xStatic :: mode :- "xstatic" :> Capture "path" String :> Get '[HTML] Html
+    , wsStream :: mode :- "stream" :> WebSocket
   }
   deriving stock (Generic)
 
 
+data IncludesRoutes mode = IncludesRoutes {
+    catchAll :: mode :- CaptureAll "subpath" String :> QueryString :> Get '[HTML] Html
+  }
+  deriving stock (Generic)

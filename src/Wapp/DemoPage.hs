@@ -1,7 +1,7 @@
 
 module Wapp.DemoPage (demoPage, demoSearch, demoReply) where
 
-import Prelude hiding (head, div, id, span)
+import Prelude hiding (head, div, span)
 
 import Control.Monad (mapM_, forM_)
 import qualified Data.Text as T
@@ -34,8 +34,8 @@ demoPage aReason projects =
   html ! class_ "dark" $ do
     head $ do
       link ! href "https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" ! rel "stylesheet"
-      link ! href "xstatic/pack_1.css" ! rel "stylesheet"
-      link ! href "xstatic/pack_2.css" ! rel "stylesheet"
+      link ! href "/zhpr/xstatic/pack_1.css" ! rel "stylesheet"
+      link ! href "/zhpr/xstatic/pack_2.css" ! rel "stylesheet"
       script ! src "https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" ! crossOrigin "anonymous" ! type_ "text/javascript" $ ""
       script ! src "https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js" ! crossOrigin "anonymous" ! type_ "text/javascript" $ ""
     body ! class_ "antialiased text-slate-300 bg-slate-900 dark:text-slate-400 dark:bg-slate-900" $
@@ -57,7 +57,7 @@ demoReply :: T.Text -> Html
 demoReply aReply =
   tbody ! A.id "notifications" ! X.hxSwapOob "beforeend" $ do
     tr $ do
-      td ! class_ "px-6 py-4 whitespace-nowrap text-sm text-slate-900" $ toHtml aReply
+      td ! class_ "px-6 py-4 whitespace-nowrap text-sm text-slate-900" $ toHtml ("Reply: " <> T.reverse aReply)
 
 
 sectionD :: [ Project ] -> Html
@@ -91,22 +91,22 @@ searchForm searchID =
           ! Sa.d "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
     input ! class_ "form-control focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none w-full text-sm leading-6 text-white placeholder-slate-400 rounded-md py-2 pl-10 ring-1 ring-slate-200 shadow-sm"
       ! type_ "search" ! A.name "search" ! placeholder "Filter project.."
-      ! X.hxPost "/xsearch" ! X.hxTrigger "keyup changed delay:500ms" ! X.hxTarget modSearchID ! hxIndicator ".htmx-indicator"
+      ! X.hxPost "/zhpr/xsearch" ! X.hxTrigger "keyup changed delay:500ms" ! X.hxTarget modSearchID ! hxIndicator ".htmx-indicator"
 
 
 searchIndicator :: Html
 searchIndicator =
   div ! class_ "bg-white sm:px-8 sm:py-6 lg:p-4 xl:px-8 xl:py-6" $ do
     H.span ! class_ "htmx-indicator" $ do
-      img ! src "xstatic/imgs/barsvg"
+      img ! src "/zhpr/xstatic/imgs/barsvg"
       "Searching..."
 
 
 testWS :: Html
 testWS = do
-  div ! X.hxExt "ws" ! X.wsConnect "/stream" ! class_ "bg-white sm:px-8 sm:py-6 lg:p-4 xl:px-8 xl:py-6" $ do
+  div ! X.hxExt "ws" ! X.wsConnect "/zhpr/stream" ! class_ "bg-white sm:px-8 sm:py-6 lg:p-4 xl:px-8 xl:py-6" $ do
     H.form ! A.id "form" ! X.wsSend "" $ do
-      input ! type_ "text" ! A.name "ws-message"
+      input ! type_ "text" ! A.name "hxid-1"
     table ! class_ "flex flex-col space-y-4" $ do
       thead $ do
         tr $ do
@@ -127,10 +127,10 @@ mockTableRow = do
 projectsD :: T.Text -> [ Project ] -> Html
 projectsD searchID projects =
  let
-    modSearchID = I.textValue $ searchID
+    modSearchID = I.textValue searchID
   in
   ul ! class_ "bg-slate-50 p-4 sm:px-8 sm:pt-6 sm:pb-8 lg:p-4 xl:px-8 xl:pt-6 xl:pb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4 text-sm leading-6 dark:bg-slate-900/40 dark:ring-1 dark:ring-white/5"
-    ! id modSearchID $ ""
+    ! A.id modSearchID $ ""
 
 
 aProjectD :: Project -> Html
