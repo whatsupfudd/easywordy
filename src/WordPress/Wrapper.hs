@@ -67,10 +67,11 @@ requestShutdown =
 tRegisterVariable :: Ptr CString -> Ptr () -> IO ()
 tRegisterVariable argv tvArray = do
   [C.block| void {
-      php_register_variable("PHP_SELF", $(char ** argv)[0], NULL);
+      php_register_variable("PHP_SELF", "HS", NULL);
       php_register_variable("SCRIPT_FILENAME", $(char ** argv)[0], $(void * tvArray));
       php_register_variable("HTTP_HOST", "ledna", $(void * tvArray));
-      php_register_variable("SERVER_NAME", "ledna", $(void * tvArray));
+      php_register_variable("SERVER_NAME", "ledna", NULL);
+      php_register_variable("REQUEST_METHOD", "GET", NULL);
     }
   |]
   return ()
