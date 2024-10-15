@@ -13,7 +13,7 @@ import Database.MySQL.Base (connect, defaultConnectInfo, query_, ConnectInfo(..)
 
 import ServeApi (serveApi)
 import Api.Handlers (setupWai)
-import WordPress.Wrapper (shutdownPhp)
+import WordPress.Wrapper (endPhp)
 import DB.Connect (startMql, startPg)
 import Options.Runtime as Rto
 
@@ -36,7 +36,7 @@ serverCmd rtOpts = do
     putStrLn $ "@[serverHu] ending."
     pure ()
   globalShutdownHandler = do
-    shutdownPhp
+    endPhp
     putStrLn "@[globalShutdownHandler] done."
 
 

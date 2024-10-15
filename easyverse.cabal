@@ -55,7 +55,7 @@ library
       OverloadedStrings
       DuplicateRecordFields
       OverloadedRecordDot
-  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -g
   extra-libraries:
       php
   build-depends:
@@ -120,7 +120,7 @@ executable easyverse
       OverloadedStrings
       DuplicateRecordFields
       OverloadedRecordDot
-  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N -g
   extra-libraries:
       php
   build-depends:

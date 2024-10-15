@@ -40,7 +40,7 @@ import Api.Session (validateUser)
 import Api.Handlers (anonHandlers, authHandlers)
 import WordPress.ApiTypes
 import WordPress.Handlers (wordpressHandlers)
-import WordPress.Wrapper (startupPhp)
+import WordPress.Wrapper (beginPhp)
 import Options.Runtime as Ropt
 
 
@@ -91,7 +91,7 @@ serveApi rtOpts pgPool mqlConn = do
 
   putStrLn "@[serveApi] got jwt keys."
   putStrLn $ "@[serveApi] listening on port " <> show rtOpts.serverPort <> "."
-  startupPhp
+  beginPhp
   pure $ middlewares $ serveWithContext serverApiProxy apiContext server
 
 

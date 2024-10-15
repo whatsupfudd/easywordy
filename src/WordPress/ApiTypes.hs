@@ -79,7 +79,7 @@ data TopRoutesWP mode = TopRoutesWP {
     -- Includes:
     , includes :: mode :- "wp-includes" :> ToServantApi IncludesRoutes
     -- Basic content delivery:
-    , homePage :: mode :- Get '[HTML] Html
+    , homePage :: mode :- QueryParam' '[Optional, Lenient] "p" Int :> Get '[HTML] Html
     , indexGet :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int
            :> QueryParam' '[Optional, Lenient] "page_id" Int
            :> QueryParam' '[Optional, Lenient] "cat" Int
@@ -164,12 +164,12 @@ data AdminRoutesWP mode = AdminRoutesWP {
 
 
 data EasyWordyRoutes mode = EasyWordyRoutes {
-    rootZP :: mode :- Get '[HTML] Html
-    , indexZP :: mode :- "index.php" :> Get '[HTML] Html
+    indexZP :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int :> Get '[HTML] Html
     , demoWs :: mode :- "demo-ws" :> Get '[HTML] Html
     , demoSrch :: mode :- "xsearch" :> ReqBody '[FormUrlEncoded] SearchContent :> Post '[HTML] Html
     , xStatic :: mode :- "xstatic" :> Capture "path" String :> Get '[HTML] Html
     , wsStream :: mode :- "stream" :> WebSocket
+    , rootZP :: mode :- Get '[HTML] Html
   }
   deriving stock (Generic)
 

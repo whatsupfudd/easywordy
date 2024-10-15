@@ -114,6 +114,8 @@ ghc-options:
 
 library:
   source-dirs: src
+  ghc-options:
+    - -g
 
 extra-libraries: php
   
@@ -125,6 +127,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -g
     dependencies:
     - easyverse
 

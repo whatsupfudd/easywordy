@@ -46,7 +46,7 @@ wordpressHandlers =
   genericServerT $ TopRoutesWP {
     admin = adminHandlers -- WP.adminHandler
     , includes = includesHandlers -- Includes.includesHandler
-    , homePage = fakeWpHandler -- WP.indexHandler
+    , homePage = homeHandler -- WP.indexHandler
     , indexGet = indexHandler -- WP.indexHandler
     , indexPost = indexReactor -- WP.indexHandler
     , login = fakeWpHandler -- WP.loginHandler
@@ -159,6 +159,23 @@ adminHandler aPath argMap = do
   (aStr, duration) <- liftIO $ invokeFile rtOpts targetUrl argMap
   pure . Html $ aStr
 
+homeHandler ::
+    Maybe (Either Text Int)  -- post id
+    -> EasyVerseApp Html
+homeHandler mbPostID = do
+  _ <- liftIO $ putStrLn "@[homeHandler]"
+  case mbPostID of
+    Nothing ->
+      pure . Html $ "<html><head><title>EASY VERSE</title></head><body> no post id.</body></html>"
+    Just eiPostID ->
+      case eiPostID of
+        Left errMsg ->
+          pure . Html $ "<html><head><title>EASY VERSE</title></head><body> postID param err: " <> encodeUtf8 errMsg <> "</body></html>"
+        Right postID -> do
+          rtOpts <- asks config_Ctxt
+          (aStr, duration) <- liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "p" (show postID))
+          pure . Html $ aStr
+
 
 indexHandler :: Maybe (Either Text Int)  -- post id
     -> Maybe (Either Text Int)           -- page id
@@ -250,9 +267,19 @@ welcomeHdZP :: EasyVerseApp Html
 welcomeHdZP =
   pure . Html $ "<html><head><title>EASY VERSE</title></head><body>Welcome to Easy Wordy.</body></html>"
 
-indexHdZP :: EasyVerseApp Html
-indexHdZP =
-  pure . Html $ "<html><head><title>EASY VERSE</title></head><body>Index.</body></html>"
+indexHdZP :: Maybe (Either Text Int) -> EasyVerseApp Html
+indexHdZP mbPostID = do
+  _ <- liftIO . putStrLn $ "@[indexHdZP] mbPostID: " <> show mbPostID
+  rtOpts <- asks config_Ctxt
+  let
+    targetUrl = "zhpr/index.php"
+    argMap = case mbPostID of
+      Nothing -> Mp.empty :: Mp.Map String String
+      Just (Left errMsg) -> Mp.singleton "err" (unpack errMsg)
+      Just (Right postID) -> Mp.singleton "p" (show postID)
+  (aStr, duration) <- liftIO $ invokeFile rtOpts targetUrl argMap
+  pure . Html $ aStr
+
 
 
 wsStreamHandler :: MonadIO m => WS.Connection -> m ()
