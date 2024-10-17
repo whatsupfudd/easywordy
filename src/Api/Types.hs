@@ -36,6 +36,8 @@ import Servant.API ((:>), ReqBody, JSON, Capture, Post, Get)
 import Hasql.Pool (Pool)
 import Database.MySQL.Base (MySQLConn)
 
+import Foreign (Ptr)
+
 import qualified Options.Runtime as Rt
 
 
@@ -89,6 +91,7 @@ data AppEnv = AppEnv {
     , jwt_Ctxt :: JWTSettings
     , pgPool_Ctxt :: Pool
     , mqlConn_Ctxt :: MySQLConn
+    , sapiModuleDef_Ctxt :: Ptr ()
   }
 
 

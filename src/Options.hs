@@ -22,8 +22,10 @@ import qualified System.Directory as Sdir
 import qualified HttpSup.CorsPolicy as Hcrs
 
 import qualified Options.Cli as Cl (CliOptions (..), EnvOptions (..))
-import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..), WpOptions (..))
-import qualified Options.Runtime as Rt (RunOptions (..), defaultRun, WpConfig (..), defaultWpConf, PgDbConfig (..), defaultPgDbConf, MqlDbConfig (..), defaultMqlDbConf)
+import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..), WpOptions (..), ZbOptions (..))
+import qualified Options.Runtime as Rt (RunOptions (..), defaultRun, WpConfig (..), defaultWpConf, PgDbConfig (..), defaultPgDbConf
+              , MqlDbConfig (..), defaultMqlDbConf, ZbConfig (..), defaultZbConf)
+
 
 type ConfError = Either String ()
 type RunOptSt = State Rt.RunOptions ConfError
@@ -31,6 +33,7 @@ type RunOptIOSt = StateT Rt.RunOptions IO ConfError
 type PgDbOptIOSt = StateT Rt.PgDbConfig (StateT Rt.RunOptions IO) ConfError
 type WpOptIOSt = StateT Rt.WpConfig (StateT Rt.RunOptions IO) ConfError
 type MqlDbOptIOSt = StateT Rt.MqlDbConfig (StateT Rt.WpConfig (StateT Rt.RunOptions IO)) ConfError
+type ZbOptIOSt = StateT Rt.ZbConfig (StateT Rt.RunOptions IO) ConfError
 
 
 mconf :: MonadState s m => Maybe t -> (t -> s -> s) -> m ()
@@ -73,6 +76,7 @@ mergeOptions cli file env = do
     for_ file.jwt parseJWT
     for_ file.cors parseCors
     innerConf (\nVal s -> s { Rt.wp = nVal }) parseWp Rt.defaultWpConf file.wordpress
+    innerConf (\nVal s -> s { Rt.zb = nVal }) parseZb Rt.defaultZbConf file.zhbzns
     pure $ Right ()
 
 
@@ -90,6 +94,12 @@ mergeOptions cli file env = do
   parseWp wpO = do
     mconf wpO.rootPath $ \nVal s -> s { Rt.rootPath = nVal }
     innerConf (\nVal s -> s { Rt.mqlDbConf = nVal }) parseMqlDb Rt.defaultMqlDbConf wpO.db
+    pure $ Right ()
+
+
+  parseZb :: Fo.ZbOptions -> ZbOptIOSt
+  parseZb zbO = do
+    mconf zbO.zbRootPath $ \nVal s -> s { Rt.zbRootPath = nVal }
     pure $ Right ()
 
 

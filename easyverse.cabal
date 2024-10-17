@@ -36,6 +36,7 @@ library
       DB.Opers
       HttpSup.CorsPolicy
       HttpSup.JWT
+      HttpSup.Types
       MainLogic
       Options
       Options.Cli

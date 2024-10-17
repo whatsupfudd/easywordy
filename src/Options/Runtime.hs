@@ -1,6 +1,7 @@
 module Options.Runtime (
   defaultRun, RunOptions (..)
   , WpConfig (..), defaultWpConf
+  , ZbConfig (..), defaultZbConf
   , module DB.Connect
 
 ) where
@@ -28,6 +29,16 @@ data WpConfig = WpConfig {
   deriving (Show)
 
 
+data ZbConfig = ZbConfig {
+  zbRootPath :: FilePath
+  }
+  deriving (Show)
+
+defaultZbConf :: ZbConfig
+defaultZbConf = ZbConfig {
+  zbRootPath = "../Lib/ZhopNess/wapp"
+  }
+
 data RunOptions = RunOptions {
     debug :: Int
     , corsPolicy :: Maybe CORSConfig
@@ -36,6 +47,7 @@ data RunOptions = RunOptions {
     , serverHost :: Text
     , pgDbConf :: PgDbConfig
     , wp :: WpConfig
+    , zb :: ZbConfig
   }
   deriving (Show)
 
@@ -50,4 +62,5 @@ defaultRun homeDir server port =
     , serverPort = port
     , pgDbConf = defaultPgDbConf
     , wp = defaultWpConf
+    , zb = defaultZbConf
   }

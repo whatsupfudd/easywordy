@@ -34,11 +34,13 @@ import qualified Text.Blaze.Html5 as H
 import Wapp.DemoPage (demoPage, demoSearch, demoReply)
 import Wapp.MockData (projectList)
 
-import Options.Runtime (RunOptions (..), WpConfig (..))
+import Options.Runtime (RunOptions (..), WpConfig (..), ZbConfig (..))
 
 import Api.Types
+import qualified HttpSup.Types as Ht
 import WordPress.ApiTypes
-import WordPress.Wrapper (invokeFile)
+import WordPress.Wrapper (handleRequest)
+import System.FilePath.Posix ((</>))
 
 
 wordpressHandlers :: ToServant TopRoutesWP (AsServerT EasyVerseApp)
@@ -156,8 +158,9 @@ adminHandler aPath argMap = do
     targetUrl = case aPath of
       "" -> "wp-admin/index.php"
       _ -> "wp-admin/" <> aPath
-  (aStr, duration) <- liftIO $ invokeFile rtOpts targetUrl argMap
+  (aStr, duration) <- liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET, uri = targetUrl, queryArgs = argMap, reqHeaders = [], reqBody = Nothing })
   pure . Html $ aStr
+
 
 homeHandler ::
     Maybe (Either Text Int)  -- post id
@@ -173,7 +176,10 @@ homeHandler mbPostID = do
           pure . Html $ "<html><head><title>EASY VERSE</title></head><body> postID param err: " <> encodeUtf8 errMsg <> "</body></html>"
         Right postID -> do
           rtOpts <- asks config_Ctxt
-          (aStr, duration) <- liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "p" (show postID))
+          (aStr, duration) <-
+            liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+                    , uri = "index.php", queryArgs = Mp.singleton "p" (show postID)
+                    , reqHeaders = [], reqBody = Nothing })
           pure . Html $ aStr
 
 
@@ -197,7 +203,10 @@ indexHandler mbPostID mbPageID mbCatID mbTagName mbSearchTerm mbDate mbAuthorID 
           pure . Html $ "<html><head><title>EASY VERSE</title></head><body> pageID param err: " <> encodeUtf8 errMsg <> "</body></html>"
         Right postID -> do
           rtOpts <- asks config_Ctxt
-          (aStr, duration) <- liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "p" (show postID))
+          (aStr, duration) <-
+              liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+                    , uri = "index.php", queryArgs = Mp.singleton "p" (show postID)
+                    , reqHeaders = [], reqBody = Nothing })
           pure . Html $ aStr
 
 
@@ -212,7 +221,10 @@ indexReactor mbStepID reqData = do
           let msg = "<html><head><title>EASY VERSE</title></head><body>err: " <> encodeUtf8 errMsg <> "</body></html>"
           in pure (msg, 0)
         Right aVal -> do
-          (result, duration) <- liftIO $ invokeFile rtOpts "index.php" (Mp.singleton "step" (show aVal))
+          (result, duration) <-
+              liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+                    , uri = "index.php", queryArgs = Mp.singleton "step" (show aVal)
+                    , reqHeaders = [], reqBody = Nothing })
           pure (result, duration)
   {-
     resultPost =
@@ -228,7 +240,10 @@ indexReactor mbStepID reqData = do
 startInstall :: EasyVerseApp Html
 startInstall = do
   rtOpts <- asks config_Ctxt
-  (result, duration) <- liftIO $ invokeFile rtOpts "/wp-admin/install.php" Mp.empty
+  (result, duration) <-
+      liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+                , uri = "/wp-admin/install.php", queryArgs = Mp.empty
+                , reqHeaders = [], reqBody = Nothing })
   pure $ Html result
 
 
@@ -238,7 +253,9 @@ installHandler mbStepID reqData = do
   rtOpts <- asks config_Ctxt
   (result, duration) <- case mbStepID of
     Nothing -> do
-      liftIO $ invokeFile rtOpts "/wp-admin/install.php" Mp.empty
+        liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+              , uri = "/wp-admin/install.php", queryArgs = Mp.empty
+              , reqHeaders = [], reqBody = Nothing })
     Just eiNumber -> case eiNumber of
       Left errMsg ->
         let
@@ -247,7 +264,9 @@ installHandler mbStepID reqData = do
         pure (msg, 0)
       Right number -> do
         liftIO . putStrLn $ "@[installHandler] number: " <> show number
-        liftIO $ invokeFile rtOpts "/wp-admin/install.php" (Mp.singleton "step" (show number))
+        liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+              , uri = "/wp-admin/install.php", queryArgs = Mp.singleton "step" (show number)
+              , reqHeaders = [], reqBody = Nothing })
   pure . Html $ result
 
 -- EasyWordy handlers:
@@ -264,8 +283,12 @@ easywordyHandlers =
   }
 
 welcomeHdZP :: EasyVerseApp Html
-welcomeHdZP =
-  pure . Html $ "<html><head><title>EASY VERSE</title></head><body>Welcome to Easy Wordy.</body></html>"
+welcomeHdZP = do
+  rtOpts <- asks config_Ctxt
+  let
+    targetFile = rtOpts.zb.zbRootPath <> "/mainFrame_1.html"
+  content <- liftIO $ Bs.readFile targetFile
+  pure . Html $ content
 
 indexHdZP :: Maybe (Either Text Int) -> EasyVerseApp Html
 indexHdZP mbPostID = do
@@ -277,68 +300,118 @@ indexHdZP mbPostID = do
       Nothing -> Mp.empty :: Mp.Map String String
       Just (Left errMsg) -> Mp.singleton "err" (unpack errMsg)
       Just (Right postID) -> Mp.singleton "p" (show postID)
-  (aStr, duration) <- liftIO $ invokeFile rtOpts targetUrl argMap
+  (aStr, duration) <-
+        liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+              , uri = targetUrl, queryArgs = argMap
+              , reqHeaders = [], reqBody = Nothing })
   pure . Html $ aStr
 
 
-
-wsStreamHandler :: MonadIO m => WS.Connection -> m ()
+-- MonadIO m => WS.Connection -> m ()
+wsStreamHandler :: WS.Connection -> EasyVerseApp ()
 wsStreamHandler conn = do
+  rtOpts <- asks config_Ctxt
   liftIO $ WS.withPingThread conn 30 (pure ()) $ do
     -- liftIO $ WS.sendTextData conn ("<div id=\"notifications\" hx-swap-oob=\"beforeend\">Some message</div?" :: ByteString)
-    handleClient
+    handleClient rtOpts
   where
-    handleClient = do
-      rezA <- tryAny $ forever receiveStream
-      case rezA of
-        Left err -> do
-          liftIO . putStrLn $ "@[streamHandler] situation: " <> show err
-          closeConnection
-        Right _ -> do
-          liftIO $ putStrLn "@[streamHandler] client disconnected."
-          pure ()
+  handleClient :: RunOptions -> IO ()
+  handleClient rtOpts = do
+    rezA <- tryAny $ forever (receiveStream rtOpts)
+    case rezA of
+      Left err -> do
+        liftIO . putStrLn $ "@[streamHandler] situation: " <> show err
+        closeConnection
+      Right _ -> do
+        liftIO $ putStrLn "@[streamHandler] client disconnected."
+        pure ()
 
-    receiveStream = do
-      rezA <- WS.receiveDataMessage conn
-      case rezA of
-        WS.Text msg decodedMsg ->
-          let
-            hxMsg = eitherDecode msg :: Either String HxWsMessage
-          in
-          case hxMsg of
-            Left err -> do
-              putStrLn $ "@[receiveStream] invalid HxWsMessage: " <> (unpack . decodeUtf8 . LBS.toStrict) msg
-              putStrLn $ "@[receiveStream] error: " <> show err
-            Right hxMsg ->
-              WS.sendTextData conn $ H.renderHtml $ demoReply hxMsg.wsMessage
-        WS.Binary msg ->
-          putStrLn "@[receiveStream] received binary."
-    
-    closeConnection = do
-      WS.sendClose conn ("Bye" :: ByteString)
-      void $ WS.receiveDataMessage conn
+  receiveStream :: RunOptions -> IO ()
+  receiveStream rtOpts = do
+    rezA <- WS.receiveDataMessage conn
+    case rezA of
+      WS.Text msg decodedMsg ->
+        let
+          hxMsg = eitherDecode msg :: Either String HxWsMessage
+        in
+        case hxMsg of
+          Left err -> do
+            putStrLn $ "@[receiveStream] invalid HxWsMessage: " <> (unpack . decodeUtf8 . LBS.toStrict) msg
+            putStrLn $ "@[receiveStream] error: " <> show err
+          Right hxMsg ->
+            case hxMsg.wsMessage of
+              Nothing ->
+                case hxMsg.headers.mid of
+                  Nothing ->
+                    WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
+                  Just anID ->
+                    let
+                      templatePath = case anID of
+                        "dashboard_stats" -> "dashboardStats_1.html"
+                        "khanban_1" -> "khanban_1.html"
+                        "inbox_1" -> "inbox_1.html"
+                        "inbox_compose_1" -> "inbox_compose_1.html"
+                        "inbox_read_1" -> "inbox_read_1.html"
+                        "inbox_reply_1" -> "inbox_reply_1.html"
+                        "ecomm_products_1" -> "ecomm_products_1.html"
+                        "ecomm_billing_1" -> "ecomm_billing_1.html"
+                        "ecomm_invoices_1" -> "ecomm_invoices_1.html"
+                        "users_listing_1" -> "users_listing_1.html"
+                        "users_profile_1" -> "users_profile_1.html"
+                        "users_feed_1" -> "users_feed_1.html"
+                        "users_settings_1" -> "users_settings_1.html"
+                        "pages_pricing_1" -> "pages_pricing_1.html"
+                        "pages_maint_1" -> "pages_maint_1.html"
+                        "pages_404_1" -> "pages_404_1.html"
+                        "pages_500_1" -> "pages_500_1.html"
+                        "auth_signin_1" -> "auth_signin_1.html"
+                        "auth_signup_1" -> "auth_signup_1.html"
+                        "auth_forgot_1" -> "auth_forgot_1.html"
+                        "auth_reset_1" -> "auth_reset_1.html"
+                        "auth_lock_1" -> "auth_lock_1.html"
+                        _ -> ""
+                    in
+                    if templatePath == ""
+                    then do
+                      putStrLn $ "@[receiveStream] templatePath not found: " <> show anID
+                      WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
+                    else do
+                      putStrLn $ "@[receiveStream] templatePath: " <> templatePath
+                      response <- liftIO $ Bs.readFile (rtOpts.zb.zbRootPath </> templatePath)
+                      putStrLn $ "@[receiveStream] sending " <> show (Bs.length response) <> " bytes."
+                      WS.sendTextData conn $ "<div id=\"mainContainer\">" <> response <> "</div>"
+              Just aText ->
+                WS.sendTextData conn $ H.renderHtml $ demoReply hxMsg.wsMessage
+      WS.Binary msg ->
+        putStrLn "@[receiveStream] received binary."
+  
+  closeConnection = do
+    WS.sendClose conn ("Bye" :: ByteString)
+    void $ WS.receiveDataMessage conn
 
 
 data HxWsHeaders = HxWsHeaders {
     request :: Text
-    , trigger :: Text
+    , trigger :: Maybe Text
     , triggerName :: Maybe Text
     , target :: Text
     , currentURL :: Text
+    , mid :: Maybe Text
   }
   deriving stock (Show, Generic)
 
 instance FromJSON HxWsHeaders where
   parseJSON (Object obj) = HxWsHeaders <$>
     obj .: "HX-Request"
-    <*> obj .: "HX-Trigger"
+    <*> obj .:? "HX-Trigger"
     <*> obj .:? "HX-Trigger-Name"
     <*> obj .: "HX-Target"
     <*> obj .: "HX-Current-URL"
+    <*> obj .:? "mid"
 
 
 data HxWsMessage = HxWsMessage {
-    wsMessage :: Text
+    wsMessage :: Maybe Text
     , headers :: HxWsHeaders
   }
   deriving (Show, Generic)
@@ -346,7 +419,7 @@ data HxWsMessage = HxWsMessage {
 
 instance FromJSON HxWsMessage where
   parseJSON (Object obj) = HxWsMessage <$>
-    obj .: "hxid-1"
+    obj .:? "hxid-1"
     <*> obj .: "HEADERS"
 
 -- TMP DEMO:

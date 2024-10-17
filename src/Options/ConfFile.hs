@@ -66,6 +66,7 @@ data FileOptions = FileOptions {
   , jwt :: Maybe JwtOpts
   , cors :: Maybe CorsOpts
   , wordpress :: Maybe WpOptions
+  , zhbzns :: Maybe ZbOptions
  }
  deriving stock (Show, Generic)
 
@@ -73,6 +74,11 @@ data FileOptions = FileOptions {
 data WpOptions = WpOptions {
   rootPath :: Maybe FilePath
   , db :: Maybe MqlDbOpts
+  }
+  deriving stock (Show, Generic)
+
+data ZbOptions = ZbOptions {
+  zbRootPath :: Maybe FilePath
   }
   deriving stock (Show, Generic)
 
@@ -97,7 +103,7 @@ instance Aes.FromJSON ServerOpts
 instance Aes.FromJSON JwtOpts
 instance Aes.FromJSON CorsOpts
 instance Aes.FromJSON WpOptions
-
+instance Aes.FromJSON ZbOptions
 
 parseFileOptions :: FilePath -> IO (Either String FileOptions)
 parseFileOptions filePath =

@@ -33,6 +33,8 @@ import Network.Wai.Middleware.RequestLogger (logStdout)
 import Database.MySQL.Base (MySQLConn)
 import Hasql.Pool (Pool)
 
+import Foreign (Ptr)
+
 import HttpSup.JWT (readJWK, tmpJWK)
 import HttpSup.CorsPolicy (setCorsPolicy)
 import Api.Types
@@ -57,8 +59,8 @@ data ServerRoutes route = ServerRoutes {
 
 
 -- serveApi ::  Ropt.RunOptions -> Pool -> IO Application
-serveApi ::  Ropt.RunOptions -> Pool -> MySQLConn -> IO Application
-serveApi rtOpts pgPool mqlConn = do
+serveApi ::  Ropt.RunOptions -> Pool -> MySQLConn -> Ptr () -> IO Application
+serveApi rtOpts pgPool mqlConn sapiModuleDef = do
   -- TODO: figure out how to turn off JWT authentication.
   jwtKey <- maybe tmpJWK readJWK rtOpts.jwkConfFile
 
@@ -86,12 +88,12 @@ serveApi rtOpts pgPool mqlConn = do
     -- TODO: add errorMw @JSON @'["message", "status"] when Servant.Errors is compatible with aeson-2.
     -- TODO: enable corsMiddleware based on rtOpts.
     -- appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, dbPool_Ctxt = dbPool }
-    appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, pgPool_Ctxt = pgPool, mqlConn_Ctxt = mqlConn }
+    appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, pgPool_Ctxt = pgPool, mqlConn_Ctxt = mqlConn, sapiModuleDef_Ctxt = sapiModuleDef }
     server = hoistServerWithContext serverApiProxy apiContextP (apiAsHandler appEnv) serverApiT
 
   putStrLn "@[serveApi] got jwt keys."
   putStrLn $ "@[serveApi] listening on port " <> show rtOpts.serverPort <> "."
-  beginPhp
+  beginPhp sapiModuleDef
   pure $ middlewares $ serveWithContext serverApiProxy apiContext server
 
 

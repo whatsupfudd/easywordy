@@ -5,6 +5,7 @@ import Prelude hiding (head, div, span)
 
 import Control.Monad (mapM_, forM_)
 import qualified Data.Text as T
+import Data.Maybe (fromMaybe)
 
 -- import qualified Data.Aeson.Key as H
 
@@ -38,7 +39,8 @@ demoPage aReason projects =
       link ! href "/zhpr/xstatic/pack_2.css" ! rel "stylesheet"
       script ! src "https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" ! crossOrigin "anonymous" ! type_ "text/javascript" $ ""
       script ! src "https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js" ! crossOrigin "anonymous" ! type_ "text/javascript" $ ""
-    body ! class_ "antialiased text-slate-300 bg-slate-900 dark:text-slate-400 dark:bg-slate-900" $
+    body ! class_ "antialiased text-slate-300 bg-slate-900 dark:text-slate-400 dark:bg-slate-900" $ do
+      script "htmx.logAll();"
       div ! A.style "color: red; background: rgb(115 120 128)" ! class_ "lg:col-span-5 xl:col-span-6 flex flex-col" $
         div ! class_ "relative z-10 rounded-xl bg-white shadow-xl ring-1 ring-slate-900/5 overflow-hidden my-auto xl:mt-18 dark:bg-slate-800" $
           div ! class_ "container mx-auto p-4" $ do
@@ -53,8 +55,11 @@ demoSearch projects needle =
     _ -> mapM_ aProjectD projects
 
 
-demoReply :: T.Text -> Html
-demoReply aReply =
+demoReply :: Maybe T.Text -> Html
+demoReply mbReply =
+  let
+    aReply = fromMaybe "" mbReply
+  in
   tbody ! A.id "notifications" ! X.hxSwapOob "beforeend" $ do
     tr $ do
       td ! class_ "px-6 py-4 whitespace-nowrap text-sm text-slate-900" $ toHtml ("Reply: " <> T.reverse aReply)

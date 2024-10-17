@@ -24,8 +24,7 @@ import Foreign.Ptr (Ptr, nullPtr, castPtr, plusPtr)
 
 import qualified Language.C.Inline as C
 import qualified Options.Runtime as Rt
-import Network.WebSockets (RequestHead(requestSecure))
-import Data.Text.Internal.Read (IParser(P))
+import HttpSup.Types (Request(..), Response(..), HttpError(..))
 
 
 C.context (C.baseCtx <> C.funCtx)
@@ -87,17 +86,16 @@ defineSapiModuleStruct =
   |]
 
 
-beginPhp :: IO ()
-beginPhp = do
-  sapiModuleDef <- defineSapiModuleStruct
+beginPhp :: Ptr () -> IO ()
+beginPhp sapiModuleDef = do
   initSapiForEasyWordy sapiModuleDef
   initPhp sapiModuleDef
-  free sapiModuleDef
 
-endPhp :: IO ()
-endPhp = do
+
+endPhp :: Ptr () -> IO ()
+endPhp sapiModuleDef = do
   cleanupPhp
-  cleanupSapi
+  cleanupSapi sapiModuleDef
 
 
 initSapiForEasyWordy :: Ptr () -> IO ()
@@ -109,10 +107,11 @@ initSapiForEasyWordy sapiModuleStruct = do
   |]
 
 
-cleanupSapi :: IO ()
-cleanupSapi =
+cleanupSapi :: Ptr () -> IO ()
+cleanupSapi sapiModuleDef = do
   [C.block| void {
     sapi_shutdown();
+    free($(void * sapiModuleDef));
   }
   |]
 
@@ -137,10 +136,15 @@ cleanupPhp =
   |]
 
 
+handleRequest :: Rt.RunOptions -> Request -> IO (ByteString, NominalDiffTime)
+handleRequest rtOpts req = do
+  invokeFile rtOpts (rtOpts.wp.rootPath </> req.uri) req.queryArgs
+
+
 invokeFile :: Rt.RunOptions -> String -> Mp.Map String String -> IO (ByteString, NominalDiffTime)
 invokeFile rtOpts urlPath argMap = do
   putStrLn $ "@[invokeFile] urlPath: " <> urlPath
-  scriptFile <- newCAString $ rtOpts.wp.rootPath <> "/" <> urlPath
+  scriptFile <- newCAString urlPath
 
   initRequest rtOpts.wp.rootPath urlPath (intercalate "&" $ map (\(k,v) -> k <> "=" <> v) (Mp.toList argMap))
   startTime <- getCurrentTime
@@ -385,7 +389,7 @@ showZVal !zv =
         fprintf(stderr, "zv: resource\n");
         break;
       default:
-        fprintf(stderr, "unknown kind %d of zv: %p\n", Z_TYPE_P(zv), zv);
+        fprintf(stderr, "unknown kind %u of zv: %p\n", Z_TYPE_P(zv), zv);
         break;
     }
     fflush(stderr);

@@ -242,7 +242,7 @@ array(43) {
   ["HTTP_SEC_FETCH_USER"]=> string(2) "?1"
   ["HTTP_SEC_FETCH_MODE"]=> string(8) "navigate"
   ["HTTP_SEC_FETCH_SITE"]=> string(4) "none"
-  ["HTTP_ACCEPT"]=> string(135) "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*\/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+  ["HTTP_ACCEPT"]=> string(135) "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*-/-*;q=0.8,application/signed-exchange;v=b3;q=0.7"
   ["HTTP_USER_AGENT"]=> string(117) "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
   ["HTTP_UPGRADE_INSECURE_REQUESTS"]=> string(1) "1"
   ["HTTP_SEC_CH_UA_PLATFORM"]=> string(7) ""macOS""
@@ -370,7 +370,7 @@ void showZVal(zval *zv) {
       fprintf(stderr, "zv: resource\n");
       break;
     default:
-      fprintf(stderr, "unknown kind %d of zv: %p\n", Z_TYPE_P(zv), zv);
+      fprintf(stderr, "unknown kind %u of zv: %p\n", Z_TYPE_P(zv), zv);
       break;
   }
   fflush(stderr);
