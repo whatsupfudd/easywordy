@@ -27,7 +27,7 @@ serverCmd rtOpts = do
     mqlConn = startMql rtOpts.wp.mqlDbConf
     pgPool = startPg rtOpts.pgDbConf
     contArgs = (,,) <$> pgPool <*> mqlConn <*> pure sapiModuleDef
-  runContT contArgs mainAction    --  (start rtOpts.db)
+  runContT contArgs mainAction
   where
   mainAction (pgPool, mqlConn, sapiModuleDef) = do
     let 

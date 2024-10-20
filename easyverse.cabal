@@ -45,6 +45,8 @@ library
       ServeApi
       Wapp.DemoPage
       Wapp.MockData
+      Wapp.Opers
+      Wapp.Router
       WordPress.ApiTypes
       WordPress.Handlers
       WordPress.Wrapper

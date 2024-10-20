@@ -16,6 +16,8 @@ import qualified Data.Map as Mp
 import Data.Text (Text, pack, unpack)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 
+import System.FilePath.Posix ((</>))
+
 import GHC.Generics
 
 import qualified Network.WebSockets as WS
@@ -30,9 +32,10 @@ import Network.HTTP.Types.URI (QueryItem)
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
 
-
+import Hasql.Pool (Pool)
 import Wapp.DemoPage (demoPage, demoSearch, demoReply)
 import Wapp.MockData (projectList)
+import qualified Wapp.Router as Wr
 
 import Options.Runtime (RunOptions (..), WpConfig (..), ZbConfig (..))
 
@@ -40,7 +43,6 @@ import Api.Types
 import qualified HttpSup.Types as Ht
 import WordPress.ApiTypes
 import WordPress.Wrapper (handleRequest)
-import System.FilePath.Posix ((</>))
 
 
 wordpressHandlers :: ToServant TopRoutesWP (AsServerT EasyVerseApp)
@@ -311,13 +313,15 @@ indexHdZP mbPostID = do
 wsStreamHandler :: WS.Connection -> EasyVerseApp ()
 wsStreamHandler conn = do
   rtOpts <- asks config_Ctxt
+  pgDb <- asks pgPool_Ctxt
   liftIO $ WS.withPingThread conn 30 (pure ()) $ do
     -- liftIO $ WS.sendTextData conn ("<div id=\"notifications\" hx-swap-oob=\"beforeend\">Some message</div?" :: ByteString)
-    handleClient rtOpts
+    -- TODO: figure out the routing-table refresh mechanism that doesn't require a websocket reconnection.
+    handleClient rtOpts pgDb (Wr.fakeRoutingInit rtOpts)
   where
-  handleClient :: RunOptions -> IO ()
-  handleClient rtOpts = do
-    rezA <- tryAny $ forever (receiveStream rtOpts)
+  handleClient :: RunOptions -> Pool -> Wr.RoutingTable -> IO ()
+  handleClient rtOpts pgDb routingTable = do
+    rezA <- tryAny $ forever (receiveStream rtOpts pgDb routingTable)
     case rezA of
       Left err -> do
         liftIO . putStrLn $ "@[streamHandler] situation: " <> show err
@@ -326,8 +330,8 @@ wsStreamHandler conn = do
         liftIO $ putStrLn "@[streamHandler] client disconnected."
         pure ()
 
-  receiveStream :: RunOptions -> IO ()
-  receiveStream rtOpts = do
+  receiveStream :: RunOptions -> Pool -> Wr.RoutingTable -> IO ()
+  receiveStream rtOpts pgDb routingTable = do
     rezA <- WS.receiveDataMessage conn
     case rezA of
       WS.Text msg decodedMsg ->
@@ -344,42 +348,15 @@ wsStreamHandler conn = do
                 case hxMsg.headers.mid of
                   Nothing ->
                     WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
-                  Just anID ->
-                    let
-                      templatePath = case anID of
-                        "dashboard_stats" -> "dashboardStats_1.html"
-                        "khanban_1" -> "khanban_1.html"
-                        "inbox_1" -> "inbox_1.html"
-                        "inbox_compose_1" -> "inbox_compose_1.html"
-                        "inbox_read_1" -> "inbox_read_1.html"
-                        "inbox_reply_1" -> "inbox_reply_1.html"
-                        "ecomm_products_1" -> "ecomm_products_1.html"
-                        "ecomm_billing_1" -> "ecomm_billing_1.html"
-                        "ecomm_invoices_1" -> "ecomm_invoices_1.html"
-                        "users_listing_1" -> "users_listing_1.html"
-                        "users_profile_1" -> "users_profile_1.html"
-                        "users_feed_1" -> "users_feed_1.html"
-                        "users_settings_1" -> "users_settings_1.html"
-                        "pages_pricing_1" -> "pages_pricing_1.html"
-                        "pages_maint_1" -> "pages_maint_1.html"
-                        "pages_404_1" -> "pages_404_1.html"
-                        "pages_500_1" -> "pages_500_1.html"
-                        "auth_signin_1" -> "auth_signin_1.html"
-                        "auth_signup_1" -> "auth_signup_1.html"
-                        "auth_forgot_1" -> "auth_forgot_1.html"
-                        "auth_reset_1" -> "auth_reset_1.html"
-                        "auth_lock_1" -> "auth_lock_1.html"
-                        _ -> ""
-                    in
-                    if templatePath == ""
-                    then do
-                      putStrLn $ "@[receiveStream] templatePath not found: " <> show anID
-                      WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
-                    else do
-                      putStrLn $ "@[receiveStream] templatePath: " <> templatePath
-                      response <- liftIO $ Bs.readFile (rtOpts.zb.zbRootPath </> templatePath)
-                      putStrLn $ "@[receiveStream] sending " <> show (Bs.length response) <> " bytes."
-                      WS.sendTextData conn $ "<div id=\"mainContainer\">" <> response <> "</div>"
+                  Just anID -> do
+                    -- TODO: need to extract the argMap from the ws-messsage.
+                    rezA <- Wr.routeRequest rtOpts pgDb routingTable anID Mp.empty
+                    case rezA of
+                      Left errMsg -> do
+                        putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
+                        WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
+                      Right aHtml -> do
+                        WS.sendTextData conn aHtml
               Just aText ->
                 WS.sendTextData conn $ H.renderHtml $ demoReply hxMsg.wsMessage
       WS.Binary msg ->

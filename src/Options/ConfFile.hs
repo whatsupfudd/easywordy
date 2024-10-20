@@ -58,19 +58,6 @@ data MqlDbOpts = MqlDbOpts {
   deriving stock (Show, Generic)
 
 
-data FileOptions = FileOptions {
-  debug :: Maybe Int
-  , primaryLocale :: Maybe String
-  , db :: Maybe PgDbOpts
-  , server :: Maybe ServerOpts
-  , jwt :: Maybe JwtOpts
-  , cors :: Maybe CorsOpts
-  , wordpress :: Maybe WpOptions
-  , zhbzns :: Maybe ZbOptions
- }
- deriving stock (Show, Generic)
-
-
 data WpOptions = WpOptions {
   rootPath :: Maybe FilePath
   , db :: Maybe MqlDbOpts
@@ -82,6 +69,18 @@ data ZbOptions = ZbOptions {
   }
   deriving stock (Show, Generic)
 
+
+data FileOptions = FileOptions {
+  debug :: Maybe Int
+  , primaryLocale :: Maybe String
+  , db :: Maybe PgDbOpts
+  , server :: Maybe ServerOpts
+  , jwt :: Maybe JwtOpts
+  , cors :: Maybe CorsOpts
+  , wordpress :: Maybe WpOptions
+  , zhbzns :: Maybe ZbOptions
+ }
+ deriving stock (Show, Generic)
 
 defaultConfName :: FilePath
 defaultConfName = ".fudd/easyverse/config.yaml"
