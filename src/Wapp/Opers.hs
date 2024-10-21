@@ -37,6 +37,20 @@ getFilesForFolder pgDb folderID = do
     Left err -> pure $ Left $ show err
     Right files -> pure $ Right files
 
+getAstForFile :: Pool -> Int32 -> IO (Either String (Maybe Bs.ByteString))
+getAstForFile pgDb fileID = do
+  rezA <- use pgDb $ locateAstForFile fileID
+  case rezA of
+    Left err -> pure $ Left $ show err
+    Right ast -> pure $ Right ast
+
+getConstantsForFile :: Pool -> Int32 -> IO (Either String (Maybe Bs.ByteString))
+getConstantsForFile pgDb fileID = do
+  rezA <- use pgDb $ locateConstantsForFile fileID
+  case rezA of
+    Left err -> pure $ Left $ show err
+    Right constants -> pure $ Right constants
+
 -- *** SQL *** --
 
 locateAllVersions :: Session (Vector (Int32, Text))
@@ -57,4 +71,16 @@ locateFilesForFolder :: Int32 -> Session (Vector (Int32, Text))
 locateFilesForFolder folderID =
   statement folderID [TH.vectorStatement|
     select uid::int4, path::text from file where folderRef = $1::int4
+  |]
+
+locateAstForFile :: Int32 -> Session (Maybe Bs.ByteString)
+locateAstForFile fileID =
+  statement fileID [TH.maybeStatement|
+    select value::bytea from ast where fileref = $1::int4
+  |]
+
+locateConstantsForFile :: Int32 -> Session (Maybe Bs.ByteString)
+locateConstantsForFile fileID =
+  statement fileID [TH.maybeStatement|
+    select value::bytea from constant where fileref = $1::int4
   |]

@@ -13,7 +13,7 @@ import qualified Data.ByteString as Bs
 import Data.ByteString (ByteString)
 import qualified Data.List as L
 import qualified Data.Map as Mp
-import Data.Text (Text, pack, unpack)
+import Data.Text (Text, pack, unpack, splitOn)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 
 import System.FilePath.Posix ((</>))
@@ -41,6 +41,7 @@ import Options.Runtime (RunOptions (..), WpConfig (..), ZbConfig (..))
 
 import Api.Types
 import qualified HttpSup.Types as Ht
+import Wapp.Router (RouteArg (..))
 import WordPress.ApiTypes
 import WordPress.Wrapper (handleRequest)
 
@@ -349,8 +350,14 @@ wsStreamHandler conn = do
                   Nothing ->
                     WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
                   Just anID -> do
+                    let
+                      argMap = case hxMsg.headers.args of
+                        Nothing -> Mp.empty
+                        Just args -> Mp.fromList $ map (\argValue -> case splitOn "=" argValue of
+                          [key, value] -> (key, TextRA value)
+                          _ -> ("", IntRA 0)) $ splitOn "&" args
                     -- TODO: need to extract the argMap from the ws-messsage.
-                    rezA <- Wr.routeRequest rtOpts pgDb routingTable anID Mp.empty
+                    rezA <- Wr.routeRequest rtOpts pgDb routingTable anID argMap
                     case rezA of
                       Left errMsg -> do
                         putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
@@ -374,8 +381,10 @@ data HxWsHeaders = HxWsHeaders {
     , target :: Text
     , currentURL :: Text
     , mid :: Maybe Text
+    , args :: Maybe Text
   }
   deriving stock (Show, Generic)
+
 
 instance FromJSON HxWsHeaders where
   parseJSON (Object obj) = HxWsHeaders <$>
@@ -385,6 +394,7 @@ instance FromJSON HxWsHeaders where
     <*> obj .: "HX-Target"
     <*> obj .: "HX-Current-URL"
     <*> obj .:? "mid"
+    <*> obj .:? "args"
 
 
 data HxWsMessage = HxWsMessage {

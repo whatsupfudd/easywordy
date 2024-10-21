@@ -90,6 +90,8 @@ dependencies:
   - blaze-markup
   # For safe exceptions:
   - safe-exceptions
+  # For decoding serialized data:
+  - binary
 
 
   

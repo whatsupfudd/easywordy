@@ -64,6 +64,7 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , blaze-html
     , blaze-htmx
     , blaze-markup
@@ -129,6 +130,7 @@ executable easyverse
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , blaze-html
     , blaze-htmx
     , blaze-markup
@@ -196,6 +198,7 @@ test-suite easyverse-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , blaze-html
     , blaze-htmx
     , blaze-markup
