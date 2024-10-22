@@ -411,10 +411,11 @@ parseAction constantVec = do
       22 -> pure . showStatement $ "UnsetST"
       23 -> pure . showStatement $ "ConstDeclST"
       24 -> do
-        -- TODO: qualName <- parseQualifiedName constantVec
+        qualName <- parseQualName constantVec
         action <- parseAction constantVec
         pure . H.div $ do
           showStatement "FunctionDefST"
+          qualName
           action
       25 -> do
         nbrMembers <- Bg.getInt32be
@@ -761,6 +762,9 @@ parseLiteral constantVec = do
           doHtml "StringLiteral"
           doHtmlStr $ "flag: " <> show flag
           strDetails
+      84 -> do
+        pure . H.div $ do
+          doHtml "NullLiteral"
       _ -> pure $ doHtmlStr ("Unknown literal type " <> show literal)
     
 
