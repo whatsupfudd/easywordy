@@ -462,7 +462,7 @@ parseAction constantVec = do
           ) [1..nbrSubActions]
         pure . H.div $ do
           showStatement "Interpolation"
-          doHtmlStr $ "nbr subActions: " <> show nbrSubActions
+          -- doHtmlStr $ "nbr subActions: " <> show nbrSubActions
           sequence_ subActions
       _ -> pure $ H.div $ H.toHtml ("Unknown statement type " <> T.pack (show stmt))
 
@@ -651,15 +651,15 @@ parseExpression constantVec = do
           rightExpr
       60 -> do
         nbrModes <- Bg.getInt32be
-        nbrExprs <- Bg.getInt32be
+        nbrArgs <- Bg.getInt32be
         modes <- mapM (\_ -> parseScopeMode constantVec) [1..nbrModes]
-        exprs <- mapM (\_ -> parseExpression constantVec) [1..nbrExprs]
+        args <- mapM (\_ -> parseExpression constantVec) [1..nbrArgs]
         pure . H.div $ do
-          showExpression "NewArray"
+          showExpression "ScopeCall"
           doHtmlStr "Modes: "
           sequence_ modes
-          doHtmlStr "Exprs: "
-          sequence_ exprs
+          doHtmlStr "Args: <todo>"
+          sequence_ args
       61 -> do
         mode <- parseScopeMode constantVec
         expr <- parseExpression constantVec
