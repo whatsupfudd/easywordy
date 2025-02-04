@@ -4,11 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           easyverse
+name:           easywordy
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/hugdro/easyverse#readme>
-homepage:       https://github.com/hugdro/easyverse#readme
-bug-reports:    https://github.com/hugdro/easyverse/issues
+description:    Please see the README on GitHub at <https://github.com/whatsupfudd/easywordy#readme>
+homepage:       https://github.com/whatsupfudd/easywordy#readme
+bug-reports:    https://github.com/whatsupfudd/easywordy/issues
 author:         Hugo DesRosiers
 maintainer:     hugo.desrosiers@boardingcities.com
 copyright:      None.
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/hugdro/easyverse
+  location: https://github.com/whatsupfudd/easywordy
 
 library
   exposed-modules:
@@ -51,7 +51,7 @@ library
       WordPress.Handlers
       WordPress.Wrapper
   other-modules:
-      Paths_easyverse
+      Paths_easywordy
   hs-source-dirs:
       src
   default-extensions:
@@ -114,10 +114,10 @@ library
     , yaml
   default-language: Haskell2010
 
-executable easyverse
+executable easywordy
   main-is: Main.hs
   other-modules:
-      Paths_easyverse
+      Paths_easywordy
   hs-source-dirs:
       app
   default-extensions:
@@ -139,7 +139,7 @@ executable easyverse
     , case-insensitive
     , containers
     , directory
-    , easyverse
+    , easywordy
     , exceptions
     , filepath
     , gitrev
@@ -181,11 +181,11 @@ executable easyverse
     , yaml
   default-language: Haskell2010
 
-test-suite easyverse-test
+test-suite easywordy-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_easyverse
+      Paths_easywordy
   hs-source-dirs:
       test
   default-extensions:
@@ -207,7 +207,7 @@ test-suite easyverse-test
     , case-insensitive
     , containers
     , directory
-    , easyverse
+    , easywordy
     , exceptions
     , filepath
     , gitrev

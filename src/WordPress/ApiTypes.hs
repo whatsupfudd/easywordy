@@ -13,7 +13,7 @@ import GHC.Generics
 
 import qualified Network.WebSockets as WS
 
-import Servant.API ((:>), Capture, CaptureAll, Post, Get, QueryParam', QueryString, ReqBody, FormUrlEncoded, NamedRoutes)
+import Servant.API ((:>), Capture, Capture', CaptureAll, Post, Get, QueryParam', QueryString, ReqBody, FormUrlEncoded, NamedRoutes)
 import Servant.API.QueryParam (QueryParam')
 import Servant.API.Modifiers (Optional, Strict, Lenient)
 import Servant.API.Generic ((:-), ToServantApi)
@@ -101,7 +101,7 @@ data TopRoutesWP mode = TopRoutesWP {
     -- External bookkeeping:
     , cron :: mode :- "wp-cron.php" :> QueryParam' '[Optional, Lenient] "doing_wp_cron" Text :> Post '[HTML] Html
     -- EasyWordy own stuff:
-    , easywordy :: mode :- "zhpr" :> ToServantApi EasyWordyRoutes
+    , easywordy :: mode :- "wbap" :> ToServantApi EasyWordyRoutes
   }
   deriving stock (Generic)
 
@@ -164,12 +164,13 @@ data AdminRoutesWP mode = AdminRoutesWP {
 
 
 data EasyWordyRoutes mode = EasyWordyRoutes {
-    indexZP :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int :> Get '[HTML] Html
+    indexZN :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int :> Get '[HTML] Html
     , demoWs :: mode :- "demo-ws" :> Get '[HTML] Html
     , demoSrch :: mode :- "xsearch" :> ReqBody '[FormUrlEncoded] SearchContent :> Post '[HTML] Html
-    , xStatic :: mode :- "xstatic" :> Capture "path" String :> Get '[HTML] Html
-    , wsStream :: mode :- "stream" :> WebSocket
-    , rootZP :: mode :- Get '[HTML] Html
+    , xStatic :: mode :- "xstatic" :> CaptureAll "path" String :> Get '[HTML] Html
+    -- TODO: find out how to make the capture optional, giving a Maybe Text.
+    , wsStream :: mode :- "stream" :> Capture "sid" Text :> WebSocket
+    , rootZN :: mode :- Get '[HTML] Html
   }
   deriving stock (Generic)
 

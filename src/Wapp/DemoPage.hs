@@ -35,8 +35,8 @@ demoPage aReason projects =
   html ! class_ "dark" $ do
     head $ do
       link ! href "https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" ! rel "stylesheet"
-      link ! href "/zhpr/xstatic/pack_1.css" ! rel "stylesheet"
-      link ! href "/zhpr/xstatic/pack_2.css" ! rel "stylesheet"
+      link ! href "/wbap/xstatic/pack_1.css" ! rel "stylesheet"
+      link ! href "/wbap/xstatic/pack_2.css" ! rel "stylesheet"
       script ! src "https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" ! crossOrigin "anonymous" ! type_ "text/javascript" $ ""
       script ! src "https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js" ! crossOrigin "anonymous" ! type_ "text/javascript" $ ""
     body ! class_ "antialiased text-slate-300 bg-slate-900 dark:text-slate-400 dark:bg-slate-900" $ do
@@ -96,20 +96,20 @@ searchForm searchID =
           ! Sa.d "M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
     input ! class_ "form-control focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none w-full text-sm leading-6 text-white placeholder-slate-400 rounded-md py-2 pl-10 ring-1 ring-slate-200 shadow-sm"
       ! type_ "search" ! A.name "search" ! placeholder "Filter project.."
-      ! X.hxPost "/zhpr/xsearch" ! X.hxTrigger "keyup changed delay:500ms" ! X.hxTarget modSearchID ! hxIndicator ".htmx-indicator"
+      ! X.hxPost "/wbap/xsearch" ! X.hxTrigger "keyup changed delay:500ms" ! X.hxTarget modSearchID ! hxIndicator ".htmx-indicator"
 
 
 searchIndicator :: Html
 searchIndicator =
   div ! class_ "bg-white sm:px-8 sm:py-6 lg:p-4 xl:px-8 xl:py-6" $ do
     H.span ! class_ "htmx-indicator" $ do
-      img ! src "/zhpr/xstatic/imgs/barsvg"
+      img ! src "/wbap/xstatic/imgs/barsvg"
       "Searching..."
 
 
 testWS :: Html
 testWS = do
-  div ! X.hxExt "ws" ! X.wsConnect "/zhpr/stream" ! class_ "bg-white sm:px-8 sm:py-6 lg:p-4 xl:px-8 xl:py-6" $ do
+  div ! X.hxExt "ws" ! X.wsConnect "/wbap/stream/00000000-0000-0000-0000-000000000000" ! class_ "bg-white sm:px-8 sm:py-6 lg:p-4 xl:px-8 xl:py-6" $ do
     H.form ! A.id "form" ! X.wsSend "" $ do
       input ! type_ "text" ! A.name "hxid-1"
     table ! class_ "flex flex-col space-y-4" $ do

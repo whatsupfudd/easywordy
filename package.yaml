@@ -1,6 +1,6 @@
-name:                easyverse
+name:                easywordy
 version:             0.1.0.0
-github:              "hugdro/easyverse"
+github:              "whatsupfudd/easywordy"
 license:             BSD3
 author:              "Hugo DesRosiers"
 maintainer:          "hugo.desrosiers@boardingcities.com"
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/hugdro/easyverse#readme>
+description:         Please see the README on GitHub at <https://github.com/whatsupfudd/easywordy#readme>
 
 dependencies:
   - aeson
@@ -122,7 +122,7 @@ library:
 extra-libraries: php
   
 executables:
-  easyverse:
+  easywordy:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -131,10 +131,10 @@ executables:
     - -with-rtsopts=-N
     - -g
     dependencies:
-    - easyverse
+    - easywordy
 
 tests:
-  easyverse-test:
+  easywordy-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -142,4 +142,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - easyverse
+    - easywordy

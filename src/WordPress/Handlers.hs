@@ -277,28 +277,28 @@ installHandler mbStepID reqData = do
 easywordyHandlers :: ToServant EasyWordyRoutes (AsServerT EasyVerseApp)
 easywordyHandlers =
   genericServerT $ EasyWordyRoutes {
-    rootZP = welcomeHdZP
-    , indexZP = indexHdZP
+    rootZN = welcomeHdZN
+    , indexZN = indexHdZN
     , demoWs = testWS -- WP.demoWsHandler
     , demoSrch = demoSearchHandler -- WP.demoSearchHandler
     , xStatic = xStaticHandler -- WP.xStaticHandler
     , wsStream = wsStreamHandler -- WP.wsStreamHandler
   }
 
-welcomeHdZP :: EasyVerseApp Html
-welcomeHdZP = do
+welcomeHdZN :: EasyVerseApp Html
+welcomeHdZN = do
   rtOpts <- asks config_Ctxt
   let
     targetFile = rtOpts.zb.zbRootPath <> "/mainFrame_1.html"
   content <- liftIO $ Bs.readFile targetFile
   pure . Html $ content
 
-indexHdZP :: Maybe (Either Text Int) -> EasyVerseApp Html
-indexHdZP mbPostID = do
-  _ <- liftIO . putStrLn $ "@[indexHdZP] mbPostID: " <> show mbPostID
+indexHdZN :: Maybe (Either Text Int) -> EasyVerseApp Html
+indexHdZN mbPostID = do
+  _ <- liftIO . putStrLn $ "@[indexHdZN] mbPostID: " <> show mbPostID
   rtOpts <- asks config_Ctxt
   let
-    targetUrl = "zhpr/index.php"
+    targetUrl = "zpns/index.php"
     argMap = case mbPostID of
       Nothing -> Mp.empty :: Mp.Map String String
       Just (Left errMsg) -> Mp.singleton "err" (unpack errMsg)
@@ -311,14 +311,36 @@ indexHdZP mbPostID = do
 
 
 -- MonadIO m => WS.Connection -> m ()
-wsStreamHandler :: WS.Connection -> EasyVerseApp ()
-wsStreamHandler conn = do
+wsStreamHandler :: Text -> WS.Connection -> EasyVerseApp ()
+wsStreamHandler sid conn = do
   rtOpts <- asks config_Ctxt
   pgDb <- asks pgPool_Ctxt
   liftIO $ WS.withPingThread conn 30 (pure ()) $ do
     -- liftIO $ WS.sendTextData conn ("<div id=\"notifications\" hx-swap-oob=\"beforeend\">Some message</div?" :: ByteString)
     -- TODO: figure out the routing-table refresh mechanism that doesn't require a websocket reconnection.
-    handleClient rtOpts pgDb (Wr.fakeRoutingInit rtOpts)
+    case Wr.findRoutingForApp rtOpts sid of
+      Nothing -> do
+        liftIO . putStrLn $ "@[wsStreamHandler] no routing table found."
+        pure ()
+      Just routingTable ->
+        handleClient rtOpts pgDb routingTable
+    {-
+    case mbEiSid of
+      Nothing ->
+        handleClient rtOpts pgDb (Wr.fakeZpNsInit rtOpts)
+      Just eiSid ->
+        case eiSid of
+          Left errMsg -> do
+            liftIO . putStrLn $ "@[wsStreamHandler] eiSid error: " <> show errMsg
+            pure ()
+          Right sid ->
+            case Wr.findRoutingForApp rtOpts sid of
+              Just routingTable ->
+                handleClient rtOpts pgDb routingTable
+              Nothing -> do
+                liftIO . putStrLn $ "@[wsStreamHandler] no routing table found."
+                pure ()
+    -}
   where
   handleClient :: RunOptions -> Pool -> Wr.RoutingTable -> IO ()
   handleClient rtOpts pgDb routingTable = do
@@ -418,8 +440,12 @@ testWS :: EasyVerseApp Html
 testWS = do
   pure . Html . LBS.toStrict . H.renderHtml $ demoPage "First Test Page WS." []
 
-xStaticHandler :: String -> EasyVerseApp Html
-xStaticHandler pageUrl = do
-  liftIO . putStrLn $ "@[xStaticHandler] pageUrl: " <> pageUrl
-  pageContent <- liftIO $ LBS.readFile ("xstatic/" <> pageUrl)
+xStaticHandler :: [String] -> EasyVerseApp Html
+xStaticHandler segments = do
+  rtOpts <- asks config_Ctxt
+  let
+    -- Used to have the "/xstatic/" path in between root & segments.
+    targetFile = rtOpts.zb.zbRootPath </> L.intercalate "/" segments
+  liftIO . putStrLn $ "@[xStaticHandler] pageUrl: " <> targetFile
+  pageContent <- liftIO $ LBS.readFile targetFile
   pure . Html . LBS.toStrict $ pageContent

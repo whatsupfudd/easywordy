@@ -42,8 +42,16 @@ data RouteArg =
   | TextRA Text
 
 
-fakeRoutingInit :: RunOptions -> RoutingTable
-fakeRoutingInit rtOpts = do
+findRoutingForApp :: RunOptions -> Text -> Maybe RoutingTable
+findRoutingForApp rtOpts anID =
+  case anID of
+    "00000000-0000-0000-0000-000000000000" -> Just $ fakeZpNsInit rtOpts
+    "00000000-0000-0000-0000-000000000001" -> Just $ fakeZ14LInit rtOpts
+    _ -> Nothing
+
+
+fakeZpNsInit :: RunOptions -> RoutingTable
+fakeZpNsInit rtOpts = do
   Mp.fromList [
       ("dashboard_stats", ExecFileRL "dashboardStats_1.html" [])
       , ("khanban_1", ExecFileRL "khanban_1.html" [])
@@ -67,11 +75,19 @@ fakeRoutingInit rtOpts = do
       , ("auth_forgot_1", ExecFileRL "auth_forgot_1.html" [])
       , ("auth_reset_1", ExecFileRL "auth_reset_1.html" [])
       , ("auth_lock_1", ExecFileRL "auth_lock_1.html" [])
-      , ("wp_versions_1", FunctionRL $ fetchVersions )
+      , ("wp_versions_1", FunctionRL fetchVersions )
       , ("wp_folders_1", FunctionRL fetchFolders)
       , ("wp_files_1", FunctionRL fetchFiles)
       , ("wp_fileDetails_1", FunctionRL fetchFileDetails)
     ]
+
+
+fakeZ14LInit :: RunOptions -> RoutingTable
+fakeZ14LInit rtOpts =
+  Mp.fromList [
+      ("dashboard_1", ExecFileRL "index.html" [])
+      , ("", FunctionRL fetchVersions)
+  ]
 
 
 routeRequest :: RunOptions -> Pool -> RoutingTable -> Text -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
