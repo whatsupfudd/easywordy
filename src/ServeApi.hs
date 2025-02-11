@@ -1,9 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module ServeApi where
@@ -38,29 +34,25 @@ import Foreign (Ptr)
 import HttpSup.JWT (readJWK, tmpJWK)
 import HttpSup.CorsPolicy (setCorsPolicy)
 import Api.Types
+-- Old stuff:
 import Api.Session (validateUser)
 import Api.Handlers (anonHandlers, authHandlers)
-import WordPress.ApiTypes
-import WordPress.Handlers (wordpressHandlers)
+-- New routing system:
+import Routing.TopDef (TopRoutes)
+import Routing.TopHandlers (serverApiT)
 import WordPress.Wrapper (beginPhp)
-import Options.Runtime as Ropt
+import qualified Options.Runtime as Rt
 
 
 -- Routing of requests (API definition):
-type MainApi = ToServantApi ServerRoutes
+import Wapp.Types (RoutingDictionary)
+
+type MainApi = ToServantApi TopRoutes
 
 
-data ServerRoutes route = ServerRoutes {
-    anonymous :: route :- ToServantApi AnonymousRoutes
-    , wordpress :: route :- ToServantApi TopRoutesWP
-    , authenticated :: route :- Auth '[JWT, BasicAuth] ClientInfo :> ToServantApi AuthenticatedRoutes
-  }
-  deriving stock (Generic)
-
-
--- serveApi ::  Ropt.RunOptions -> Pool -> IO Application
-serveApi ::  Ropt.RunOptions -> Pool -> MySQLConn -> Ptr () -> IO Application
-serveApi rtOpts pgPool mqlConn sapiModuleDef = do
+-- serveApi ::  Rt.RunOptions -> Pool -> IO Application
+launchServant ::  Rt.RunOptions -> Pool -> MySQLConn -> Ptr () -> RoutingDictionary -> IO Application
+launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs = do
   -- TODO: figure out how to turn off JWT authentication.
   jwtKey <- maybe tmpJWK readJWK rtOpts.jwkConfFile
 
@@ -88,7 +80,8 @@ serveApi rtOpts pgPool mqlConn sapiModuleDef = do
     -- TODO: add errorMw @JSON @'["message", "status"] when Servant.Errors is compatible with aeson-2.
     -- TODO: enable corsMiddleware based on rtOpts.
     -- appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, dbPool_Ctxt = dbPool }
-    appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, pgPool_Ctxt = pgPool, mqlConn_Ctxt = mqlConn, sapiModuleDef_Ctxt = sapiModuleDef }
+    appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, pgPool_Ctxt = pgPool, mqlConn_Ctxt = mqlConn
+            , sapiModuleDef_Ctxt = sapiModuleDef, routeDict_Ctxt = appDefs }
     server = hoistServerWithContext serverApiProxy apiContextP (apiAsHandler appEnv) serverApiT
 
   putStrLn "@[serveApi] got jwt keys."
@@ -97,20 +90,10 @@ serveApi rtOpts pgPool mqlConn sapiModuleDef = do
   pure $ middlewares $ serveWithContext serverApiProxy apiContext server
 
 
--- Handler definitions:
-
+-- Root handling definition:
 
 serverApiProxy :: Proxy MainApi
 serverApiProxy = Proxy
-
-
-serverApiT :: ToServant ServerRoutes (AsServerT EasyVerseApp)
-serverApiT = genericServerT $ ServerRoutes {
-    anonymous = anonHandlers
-    , wordpress = wordpressHandlers
-    , authenticated = authHandlers
-  }
-
 
 -- | Natural transformations between 'App' and 'Handler' monads
 apiAsHandler :: AppEnv -> EasyVerseApp a -> Handler a

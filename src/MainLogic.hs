@@ -30,7 +30,8 @@ runWithOptions cliOptions fileOptions = do
             Opt.HelpCmd -> Cmd.helpCmd
             Opt.VersionCmd -> Cmd.versionCmd
             Opt.ServerCmd -> Cmd.serverCmd
-      rtOptions <- Opt.mergeOptions cliOptions fileOptions envOptions 
+            Opt.TestJS -> Cmd.testJsCmd 2 ""
+      rtOptions <- Opt.mergeOptions cliOptions fileOptions envOptions
         -- switchboard to command executors:
       result <- cmdExecutor rtOptions
       -- TODO: return a properly kind of conclusion.

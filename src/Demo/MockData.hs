@@ -1,4 +1,4 @@
-module Wapp.MockData where
+module Demo.MockData where
 
 import qualified Data.Text as T
 

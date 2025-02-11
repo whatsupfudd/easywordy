@@ -1,5 +1,5 @@
 
-module Wapp.DemoPage (demoPage, demoSearch, demoReply) where
+module Demo.DemoPage (demoPage, demoSearch, demoReply) where
 
 import Prelude hiding (head, div, span)
 
@@ -23,7 +23,7 @@ import qualified Text.Blaze.Htmx as X
 import qualified Text.Blaze.Htmx.WebSockets as X
 -- import qualified System.Posix as A
 
-import Wapp.MockData
+import Demo.MockData
     ( ImageLocator(PlainUrl, UnsplashLC),
       UserPrj(name, imageID),
       Project(users, url, title, category),

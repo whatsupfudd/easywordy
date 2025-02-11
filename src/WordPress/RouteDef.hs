@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module WordPress.ApiTypes where
+module WordPress.RouteDef where
 
 import Data.Text (Text)
 import GHC.Generics
@@ -73,9 +73,9 @@ newtype SearchContent = SearchContent {
   deriving anyclass (FromForm)
 
 
-data TopRoutesWP mode = TopRoutesWP {
+data WpTopRoutes mode = WpTopRoutes {
     -- CMS (content and operations):
-      admin :: mode :- "wp-admin" :> ToServantApi AdminRoutesWP
+      admin :: mode :- "wp-admin" :> ToServantApi AdminRoutes
     -- Includes:
     , includes :: mode :- "wp-includes" :> ToServantApi IncludesRoutes
     -- Basic content delivery:
@@ -101,12 +101,11 @@ data TopRoutesWP mode = TopRoutesWP {
     -- External bookkeeping:
     , cron :: mode :- "wp-cron.php" :> QueryParam' '[Optional, Lenient] "doing_wp_cron" Text :> Post '[HTML] Html
     -- EasyWordy own stuff:
-    , easywordy :: mode :- "wbap" :> ToServantApi EasyWordyRoutes
   }
   deriving stock (Generic)
 
 
-data AdminRoutesWP mode = AdminRoutesWP {
+data AdminRoutes mode = AdminRoutes {
       -- admin basics (dashboard, options, etc):
       root :: mode :- Get '[HTML] Html
       , index :: mode :- "index.php" :> Get '[HTML] Html
@@ -159,18 +158,6 @@ data AdminRoutesWP mode = AdminRoutesWP {
       , installGet :: mode :- "install.php" :> Get '[HTML] Html
       , installPost :: mode :- "install.php" :> QueryParam' '[Optional, Lenient] "step" Int :> ReqBody '[FormUrlEncoded] InstallPost :> Post '[HTML] Html
 
-  }
-  deriving stock (Generic)
-
-
-data EasyWordyRoutes mode = EasyWordyRoutes {
-    indexZN :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int :> Get '[HTML] Html
-    , demoWs :: mode :- "demo-ws" :> Get '[HTML] Html
-    , demoSrch :: mode :- "xsearch" :> ReqBody '[FormUrlEncoded] SearchContent :> Post '[HTML] Html
-    , xStatic :: mode :- "xstatic" :> CaptureAll "path" String :> Get '[HTML] Html
-    -- TODO: find out how to make the capture optional, giving a Maybe Text.
-    , wsStream :: mode :- "stream" :> Capture "sid" Text :> WebSocket
-    , rootZN :: mode :- Get '[HTML] Html
   }
   deriving stock (Generic)
 

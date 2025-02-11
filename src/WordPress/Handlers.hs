@@ -1,6 +1,3 @@
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module WordPress.Handlers where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -32,23 +29,19 @@ import Network.HTTP.Types.URI (QueryItem)
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
 
-import Hasql.Pool (Pool)
-import Wapp.DemoPage (demoPage, demoSearch, demoReply)
-import Wapp.MockData (projectList)
-import qualified Wapp.Router as Wr
 
 import Options.Runtime (RunOptions (..), WpConfig (..), ZbConfig (..))
 
 import Api.Types
 import qualified HttpSup.Types as Ht
-import Wapp.Router (RouteArg (..))
-import WordPress.ApiTypes
-import WordPress.Wrapper (handleRequest)
+import WordPress.RouteDef (WpTopRoutes (..), AdminRoutes (..), IncludesRoutes (..)
+      , IndexPosting (..), PostComment (..), Trackback (..), InstallPost (..))
+import WordPress.Wrapper (handlePhpRequest)
 
 
-wordpressHandlers :: ToServant TopRoutesWP (AsServerT EasyVerseApp)
+wordpressHandlers :: ToServant WpTopRoutes (AsServerT EasyVerseApp)
 wordpressHandlers =
-  genericServerT $ TopRoutesWP {
+  genericServerT $ WpTopRoutes {
     admin = adminHandlers -- WP.adminHandler
     , includes = includesHandlers -- Includes.includesHandler
     , homePage = homeHandler -- WP.indexHandler
@@ -59,13 +52,12 @@ wordpressHandlers =
     , xmlRpc = fakeWpHandler -- WP.xmlRpcHandler
     , trackback = fakeWpHandlerTrackBack -- WP.trackbackHandler
     , cron = cronHandler
-    , easywordy = easywordyHandlers -- EasyWordy.easywordyHandler
   }
 
 
-adminHandlers :: ToServant AdminRoutesWP (AsServerT EasyVerseApp)
+adminHandlers :: ToServant AdminRoutes (AsServerT EasyVerseApp)
 adminHandlers = 
-  genericServerT $ AdminRoutesWP {
+  genericServerT $ AdminRoutes {
     root = adminHandler "" Mp.empty
     , index = adminHandler "index.php" Mp.empty -- WP.adminHandler
     , postNew = fakeWpHandler -- WP.adminHandler
@@ -161,7 +153,7 @@ adminHandler aPath argMap = do
     targetUrl = case aPath of
       "" -> "wp-admin/index.php"
       _ -> "wp-admin/" <> aPath
-  (aStr, duration) <- liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET, uri = targetUrl, queryArgs = argMap, reqHeaders = [], reqBody = Nothing })
+  (aStr, duration) <- liftIO $ handlePhpRequest rtOpts (Ht.Request { method = Ht.GET, uri = targetUrl, queryArgs = argMap, reqHeaders = [], reqBody = Nothing })
   pure . Html $ aStr
 
 
@@ -180,7 +172,7 @@ homeHandler mbPostID = do
         Right postID -> do
           rtOpts <- asks config_Ctxt
           (aStr, duration) <-
-            liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+            liftIO $ handlePhpRequest rtOpts (Ht.Request { method = Ht.GET
                     , uri = "index.php", queryArgs = Mp.singleton "p" (show postID)
                     , reqHeaders = [], reqBody = Nothing })
           pure . Html $ aStr
@@ -207,7 +199,7 @@ indexHandler mbPostID mbPageID mbCatID mbTagName mbSearchTerm mbDate mbAuthorID 
         Right postID -> do
           rtOpts <- asks config_Ctxt
           (aStr, duration) <-
-              liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+              liftIO $ handlePhpRequest rtOpts (Ht.Request { method = Ht.GET
                     , uri = "index.php", queryArgs = Mp.singleton "p" (show postID)
                     , reqHeaders = [], reqBody = Nothing })
           pure . Html $ aStr
@@ -225,7 +217,7 @@ indexReactor mbStepID reqData = do
           in pure (msg, 0)
         Right aVal -> do
           (result, duration) <-
-              liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+              liftIO $ handlePhpRequest rtOpts (Ht.Request { method = Ht.GET
                     , uri = "index.php", queryArgs = Mp.singleton "step" (show aVal)
                     , reqHeaders = [], reqBody = Nothing })
           pure (result, duration)
@@ -244,7 +236,7 @@ startInstall :: EasyVerseApp Html
 startInstall = do
   rtOpts <- asks config_Ctxt
   (result, duration) <-
-      liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+      liftIO $ handlePhpRequest rtOpts (Ht.Request { method = Ht.GET
                 , uri = "/wp-admin/install.php", queryArgs = Mp.empty
                 , reqHeaders = [], reqBody = Nothing })
   pure $ Html result
@@ -256,7 +248,7 @@ installHandler mbStepID reqData = do
   rtOpts <- asks config_Ctxt
   (result, duration) <- case mbStepID of
     Nothing -> do
-        liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+        liftIO $ handlePhpRequest rtOpts (Ht.Request { method = Ht.GET
               , uri = "/wp-admin/install.php", queryArgs = Mp.empty
               , reqHeaders = [], reqBody = Nothing })
     Just eiNumber -> case eiNumber of
@@ -267,185 +259,8 @@ installHandler mbStepID reqData = do
         pure (msg, 0)
       Right number -> do
         liftIO . putStrLn $ "@[installHandler] number: " <> show number
-        liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
+        liftIO $ handlePhpRequest rtOpts (Ht.Request { method = Ht.GET
               , uri = "/wp-admin/install.php", queryArgs = Mp.singleton "step" (show number)
               , reqHeaders = [], reqBody = Nothing })
   pure . Html $ result
 
--- EasyWordy handlers:
-
-easywordyHandlers :: ToServant EasyWordyRoutes (AsServerT EasyVerseApp)
-easywordyHandlers =
-  genericServerT $ EasyWordyRoutes {
-    rootZN = welcomeHdZN
-    , indexZN = indexHdZN
-    , demoWs = testWS -- WP.demoWsHandler
-    , demoSrch = demoSearchHandler -- WP.demoSearchHandler
-    , xStatic = xStaticHandler -- WP.xStaticHandler
-    , wsStream = wsStreamHandler -- WP.wsStreamHandler
-  }
-
-welcomeHdZN :: EasyVerseApp Html
-welcomeHdZN = do
-  rtOpts <- asks config_Ctxt
-  let
-    targetFile = rtOpts.zb.zbRootPath <> "/mainFrame_1.html"
-  content <- liftIO $ Bs.readFile targetFile
-  pure . Html $ content
-
-indexHdZN :: Maybe (Either Text Int) -> EasyVerseApp Html
-indexHdZN mbPostID = do
-  _ <- liftIO . putStrLn $ "@[indexHdZN] mbPostID: " <> show mbPostID
-  rtOpts <- asks config_Ctxt
-  let
-    targetUrl = "zpns/index.php"
-    argMap = case mbPostID of
-      Nothing -> Mp.empty :: Mp.Map String String
-      Just (Left errMsg) -> Mp.singleton "err" (unpack errMsg)
-      Just (Right postID) -> Mp.singleton "p" (show postID)
-  (aStr, duration) <-
-        liftIO $ handleRequest rtOpts (Ht.Request { method = Ht.GET
-              , uri = targetUrl, queryArgs = argMap
-              , reqHeaders = [], reqBody = Nothing })
-  pure . Html $ aStr
-
-
--- MonadIO m => WS.Connection -> m ()
-wsStreamHandler :: Text -> WS.Connection -> EasyVerseApp ()
-wsStreamHandler sid conn = do
-  rtOpts <- asks config_Ctxt
-  pgDb <- asks pgPool_Ctxt
-  liftIO $ WS.withPingThread conn 30 (pure ()) $ do
-    -- liftIO $ WS.sendTextData conn ("<div id=\"notifications\" hx-swap-oob=\"beforeend\">Some message</div?" :: ByteString)
-    -- TODO: figure out the routing-table refresh mechanism that doesn't require a websocket reconnection.
-    case Wr.findRoutingForApp rtOpts sid of
-      Nothing -> do
-        liftIO . putStrLn $ "@[wsStreamHandler] no routing table found."
-        pure ()
-      Just routingTable ->
-        handleClient rtOpts pgDb routingTable
-    {-
-    case mbEiSid of
-      Nothing ->
-        handleClient rtOpts pgDb (Wr.fakeZpNsInit rtOpts)
-      Just eiSid ->
-        case eiSid of
-          Left errMsg -> do
-            liftIO . putStrLn $ "@[wsStreamHandler] eiSid error: " <> show errMsg
-            pure ()
-          Right sid ->
-            case Wr.findRoutingForApp rtOpts sid of
-              Just routingTable ->
-                handleClient rtOpts pgDb routingTable
-              Nothing -> do
-                liftIO . putStrLn $ "@[wsStreamHandler] no routing table found."
-                pure ()
-    -}
-  where
-  handleClient :: RunOptions -> Pool -> Wr.RoutingTable -> IO ()
-  handleClient rtOpts pgDb routingTable = do
-    rezA <- tryAny $ forever (receiveStream rtOpts pgDb routingTable)
-    case rezA of
-      Left err -> do
-        liftIO . putStrLn $ "@[streamHandler] situation: " <> show err
-        closeConnection
-      Right _ -> do
-        liftIO $ putStrLn "@[streamHandler] client disconnected."
-        pure ()
-
-  receiveStream :: RunOptions -> Pool -> Wr.RoutingTable -> IO ()
-  receiveStream rtOpts pgDb routingTable = do
-    rezA <- WS.receiveDataMessage conn
-    case rezA of
-      WS.Text msg decodedMsg ->
-        let
-          hxMsg = eitherDecode msg :: Either String HxWsMessage
-        in
-        case hxMsg of
-          Left err -> do
-            putStrLn $ "@[receiveStream] invalid HxWsMessage: " <> (unpack . decodeUtf8 . LBS.toStrict) msg
-            putStrLn $ "@[receiveStream] error: " <> show err
-          Right hxMsg ->
-            case hxMsg.wsMessage of
-              Nothing ->
-                case hxMsg.headers.mid of
-                  Nothing ->
-                    WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
-                  Just anID -> do
-                    let
-                      argMap = case hxMsg.headers.args of
-                        Nothing -> Mp.empty
-                        Just args -> Mp.fromList $ map (\argValue -> case splitOn "=" argValue of
-                          [key, value] -> (key, TextRA value)
-                          _ -> ("", IntRA 0)) $ splitOn "&" args
-                    -- TODO: need to extract the argMap from the ws-messsage.
-                    rezA <- Wr.routeRequest rtOpts pgDb routingTable anID argMap
-                    case rezA of
-                      Left errMsg -> do
-                        putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
-                        WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
-                      Right aHtml -> do
-                        WS.sendTextData conn aHtml
-              Just aText ->
-                WS.sendTextData conn $ H.renderHtml $ demoReply hxMsg.wsMessage
-      WS.Binary msg ->
-        putStrLn "@[receiveStream] received binary."
-  
-  closeConnection = do
-    WS.sendClose conn ("Bye" :: ByteString)
-    void $ WS.receiveDataMessage conn
-
-
-data HxWsHeaders = HxWsHeaders {
-    request :: Text
-    , trigger :: Maybe Text
-    , triggerName :: Maybe Text
-    , target :: Text
-    , currentURL :: Text
-    , mid :: Maybe Text
-    , args :: Maybe Text
-  }
-  deriving stock (Show, Generic)
-
-
-instance FromJSON HxWsHeaders where
-  parseJSON (Object obj) = HxWsHeaders <$>
-    obj .: "HX-Request"
-    <*> obj .:? "HX-Trigger"
-    <*> obj .:? "HX-Trigger-Name"
-    <*> obj .: "HX-Target"
-    <*> obj .: "HX-Current-URL"
-    <*> obj .:? "mid"
-    <*> obj .:? "args"
-
-
-data HxWsMessage = HxWsMessage {
-    wsMessage :: Maybe Text
-    , headers :: HxWsHeaders
-  }
-  deriving (Show, Generic)
-
-
-instance FromJSON HxWsMessage where
-  parseJSON (Object obj) = HxWsMessage <$>
-    obj .:? "hxid-1"
-    <*> obj .: "HEADERS"
-
--- TMP DEMO:
-demoSearchHandler :: SearchContent -> EasyVerseApp Html
-demoSearchHandler needle = do
-  pure . Html . LBS.toStrict . H.renderHtml $ demoSearch projectList needle.search
-
-testWS :: EasyVerseApp Html
-testWS = do
-  pure . Html . LBS.toStrict . H.renderHtml $ demoPage "First Test Page WS." []
-
-xStaticHandler :: [String] -> EasyVerseApp Html
-xStaticHandler segments = do
-  rtOpts <- asks config_Ctxt
-  let
-    -- Used to have the "/xstatic/" path in between root & segments.
-    targetFile = rtOpts.zb.zbRootPath </> L.intercalate "/" segments
-  liftIO . putStrLn $ "@[xStaticHandler] pageUrl: " <> targetFile
-  pageContent <- liftIO $ LBS.readFile targetFile
-  pure . Html . LBS.toStrict $ pageContent

@@ -92,9 +92,17 @@ dependencies:
   - safe-exceptions
   # For decoding serialized data:
   - binary
+  # For inline JS:
+  - inline-js
+  - inline-js-core
+  - rio
+  # For app spec:
+  - uuid
+  # For state management in ws handling loop:
+  - mtl
 
 
-  
+
 
 
 default-extensions:
@@ -120,7 +128,7 @@ library:
     - -g
 
 extra-libraries: php
-  
+
 executables:
   easywordy:
     main:                Main.hs

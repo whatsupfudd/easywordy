@@ -26,6 +26,7 @@ data Command =
   HelpCmd
   | VersionCmd
   | ServerCmd
+  | TestJS
   deriving stock (Show)
 
 {- HERE: Additional structures for holding new command parameters:
@@ -87,7 +88,7 @@ globConfFileDef =
       <> showDefault
       <> help "Global debug state."
     )
-  
+
 
 commandDefs :: Mod CommandFields Command
 commandDefs =
@@ -96,6 +97,7 @@ commandDefs =
       ("help", HelpCmd, "Help about any command.")
       , ("version", VersionCmd, "Shows the version number of importer.")
       , ("server", ServerCmd, "A high performance web server.")
+      , ("testjs", TestJS, "Test the nodejs inline exec.")
       ]
     headArray = head cmdArray
     tailArray = tail cmdArray

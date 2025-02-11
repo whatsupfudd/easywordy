@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-module Wapp.Opers where
+module WordPress.Opers where
 
 
 import qualified Data.ByteString as Bs

@@ -1,112 +1,32 @@
-module Wapp.Router where
-
-import Control.Monad.IO.Class (liftIO)
+module WordPress.Functions where
 
 import qualified Data.ByteString as Bs
-import qualified Data.Int (Int32)
+import Data.Int (Int32)
 import qualified Data.Map as Mp
-import Data.Text (Text)
+import Data.Text (Text, pack)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import System.FilePath.Posix ((</>))
-import qualified Data.Vector as V
 import qualified Data.Binary.Get as Bg
+import qualified Data.Vector as V
+import Data.Word (Word8)
 import qualified Numeric as Nm
 
 import Hasql.Pool (Pool)
 
-import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Text.Blaze.Htmx as X
 import qualified Text.Blaze.Htmx.WebSockets as X
 import qualified Text.Blaze.Internal as Bli
+import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 
-import Options.Runtime (RunOptions (..), ZbConfig (..))
-import Wapp.Opers (getVersions, getFoldersForVersion, getFilesForFolder
+import qualified Options.Runtime as Rt
+import qualified Wapp.Types as Wt
+import WordPress.Opers (getVersions, getFoldersForVersion, getFilesForFolder
           , getConstantsForFile, getAstForFile, getFileDetailsForID
           , getErrorForFile, getFolderDetailsForID)
-import Control.Lens.Internal.CTypes (Int32)
-import Data.Word (Word8)
 
-type RoutingTable = Mp.Map Text RouteLogic
-type RouteFunction = RunOptions -> Pool -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
-
-data RouteLogic =
-  ExecFileRL FilePath [ RouteArg ]
-  | FunctionRL RouteFunction
-
-
-data RouteArg =
-  IntRA Int32
-  | TextRA Text
-
-
-findRoutingForApp :: RunOptions -> Text -> Maybe RoutingTable
-findRoutingForApp rtOpts anID =
-  case anID of
-    "00000000-0000-0000-0000-000000000000" -> Just $ fakeZpNsInit rtOpts
-    "00000000-0000-0000-0000-000000000001" -> Just $ fakeZ14LInit rtOpts
-    _ -> Nothing
-
-
-fakeZpNsInit :: RunOptions -> RoutingTable
-fakeZpNsInit rtOpts = do
-  Mp.fromList [
-      ("dashboard_stats", ExecFileRL "dashboardStats_1.html" [])
-      , ("khanban_1", ExecFileRL "khanban_1.html" [])
-      , ("inbox_1", ExecFileRL "inbox_1.html" [])
-      , ("inbox_compose_1", ExecFileRL "inbox_compose_1.html" [])
-      , ("inbox_read_1", ExecFileRL "inbox_read_1.html" [])
-      , ("inbox_reply_1", ExecFileRL "inbox_reply_1.html" [])
-      , ("ecomm_products_1", ExecFileRL "ecomm_products_1.html" [])
-      , ("ecomm_billing_1", ExecFileRL "ecomm_billing_1.html" [])
-      , ("ecomm_invoices_1", ExecFileRL "ecomm_invoices_1.html" [])
-      , ("users_listing_1", ExecFileRL "users_listing_1.html" [])
-      , ("users_profile_1", ExecFileRL "users_profile_1.html" [])
-      , ("users_feed_1", ExecFileRL "users_feed_1.html" [])
-      , ("users_settings_1", ExecFileRL "users_settings_1.html" [])
-      , ("pages_pricing_1", ExecFileRL "pages_pricing_1.html" [])
-      , ("pages_maint_1", ExecFileRL "pages_maint_1.html" [])
-      , ("pages_404_1", ExecFileRL "pages_404_1.html" [])
-      , ("pages_500_1", ExecFileRL "pages_500_1.html" [])
-      , ("auth_signin_1", ExecFileRL "auth_signin_1.html" [])
-      , ("auth_signup_1", ExecFileRL "auth_signup_1.html" [])
-      , ("auth_forgot_1", ExecFileRL "auth_forgot_1.html" [])
-      , ("auth_reset_1", ExecFileRL "auth_reset_1.html" [])
-      , ("auth_lock_1", ExecFileRL "auth_lock_1.html" [])
-      , ("wp_versions_1", FunctionRL fetchVersions )
-      , ("wp_folders_1", FunctionRL fetchFolders)
-      , ("wp_files_1", FunctionRL fetchFiles)
-      , ("wp_fileDetails_1", FunctionRL fetchFileDetails)
-    ]
-
-
-fakeZ14LInit :: RunOptions -> RoutingTable
-fakeZ14LInit rtOpts =
-  Mp.fromList [
-      ("dashboard_1", ExecFileRL "index.html" [])
-      , ("", FunctionRL fetchVersions)
-  ]
-
-
-routeRequest :: RunOptions -> Pool -> RoutingTable -> Text -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
-routeRequest rtOpts pgDb routingTable anID argMap =
-  case Mp.lookup anID routingTable of
-    Nothing -> do
-      putStrLn $ "@[receiveStream] templatePath not found: " <> show anID
-      pure $ Left "<div id=\"mainContainer\"></div>"
-    Just (ExecFileRL templatePath _) -> do
-      putStrLn $ "@[receiveStream] templatePath: " <> templatePath
-      response <- liftIO $ Bs.readFile (rtOpts.zb.zbRootPath </> templatePath)
-      -- putStrLn $ "@[receiveStream] sending " <> show (Bs.length response) <> " bytes."
-      pure $ Right $ "<div id=\"mainContainer\">" <> response <> "</div>"
-    Just (FunctionRL fetchFunc) -> do
-      putStrLn $ "@[receiveStream] function: " <> T.unpack anID
-      fetchFunc rtOpts pgDb argMap
-
-
-fetchVersions :: RunOptions -> Pool -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
+fetchVersions :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
 fetchVersions rtOpts pgDb argMap = do
   rezA <- getVersions pgDb
   case rezA of
@@ -134,11 +54,11 @@ fetchVersions rtOpts pgDb argMap = do
       pure . Right . Bs.toStrict . renderHtml $ response
 
 
-fetchFolders :: RunOptions -> Pool -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
+fetchFolders :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
 fetchFolders rtOpts pgDb argMap = do
   let
     versionID = case Mp.lookup "version" argMap of
-      Just (TextRA versionID) -> read . T.unpack $ versionID
+      Just (Wt.TextRA versionID) -> read . T.unpack $ versionID
       _ -> 1
   rezA <- getFoldersForVersion pgDb versionID
   case rezA of
@@ -166,11 +86,11 @@ fetchFolders rtOpts pgDb argMap = do
       pure . Right . Bs.toStrict . renderHtml $ response
 
 
-fetchFiles :: RunOptions -> Pool -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
+fetchFiles :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
 fetchFiles rtOpts pgDb argMap = do
   let
     folderID = case Mp.lookup "folder" argMap of
-      Just (TextRA folderID) -> read . T.unpack $ folderID
+      Just (Wt.TextRA folderID) -> read . T.unpack $ folderID
       _ -> 1
   rezA <- getFilesForFolder pgDb folderID
   rezB <- getFolderDetailsForID pgDb folderID
@@ -207,11 +127,11 @@ fetchFiles rtOpts pgDb argMap = do
       pure . Right . Bs.toStrict . renderHtml $ response
 
 
-fetchFileDetails :: RunOptions -> Pool -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
+fetchFileDetails :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
 fetchFileDetails rtOpts pgDb argMap = do
   let
     fileID = case Mp.lookup "file" argMap of
-      Just (TextRA fileID) -> read . T.unpack $ fileID
+      Just (Wt.TextRA fileID) -> read . T.unpack $ fileID
       _ -> 1
   rezA <- getAstForFile pgDb fileID
   rezB <- getConstantsForFile pgDb fileID

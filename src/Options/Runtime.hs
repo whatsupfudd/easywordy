@@ -39,6 +39,9 @@ defaultZbConf = ZbConfig {
   zbRootPath = "../Lib/ZhopNess/wapp"
   }
 
+defaultAppDefs :: FilePath
+defaultAppDefs = "../Lib/Wapp"
+
 data RunOptions = RunOptions {
     debug :: Int
     , corsPolicy :: Maybe CORSConfig
@@ -48,6 +51,7 @@ data RunOptions = RunOptions {
     , pgDbConf :: PgDbConfig
     , wp :: WpConfig
     , zb :: ZbConfig
+    , appDefs :: FilePath
   }
   deriving (Show)
 
@@ -63,4 +67,5 @@ defaultRun homeDir server port =
     , pgDbConf = defaultPgDbConf
     , wp = defaultWpConf
     , zb = defaultZbConf
+    , appDefs = defaultAppDefs
   }

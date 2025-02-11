@@ -39,7 +39,7 @@ import Database.MySQL.Base (MySQLConn)
 import Foreign (Ptr)
 
 import qualified Options.Runtime as Rt
-
+import Wapp.Types (RoutingDictionary)
 
 -- Client Data going in / out.
 data ClientInfo = ClientInfo {
@@ -92,6 +92,7 @@ data AppEnv = AppEnv {
     , pgPool_Ctxt :: Pool
     , mqlConn_Ctxt :: MySQLConn
     , sapiModuleDef_Ctxt :: Ptr ()
+    , routeDict_Ctxt :: RoutingDictionary
   }
 
 

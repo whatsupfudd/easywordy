@@ -30,7 +30,7 @@ resolver:
 #   - auto-update
 #   - wai
 packages:
-- .
+  - .
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
@@ -55,9 +55,11 @@ extra-deps:
   - tls-2.0.6@sha256:bd83146d767b0a2f70b070128448423e2b008241dce1910f891953a917abe33c,6119
   - crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
 
-#  - servant-docs 
-#  - servant-foreign
+  - ../Lib/inline-js/inline-js
+  - ../Lib/inline-js/inline-js-core
 
+#  - servant-docs
+#  - servant-foreign
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
@@ -78,8 +80,9 @@ allow-newer: true
 # arch: x86_64
 #
 # Extra directories used by stack for building
-extra-include-dirs: [ ../Lib/php, ../Lib/php/Zend, ../Lib/php/main, ../Lib/php/TSRM ]
-extra-lib-dirs: [ ../Lib/php/libs/x86_64-linux ]
+extra-include-dirs:
+  [../Lib/php, ../Lib/php/Zend, ../Lib/php/main, ../Lib/php/TSRM]
+extra-lib-dirs: [../Lib/php/libs/x86_64-linux]
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor

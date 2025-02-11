@@ -31,9 +31,14 @@ library
       Commands
       Commands.Help
       Commands.Server
+      Commands.TestJS
       Commands.Version
       DB.Connect
       DB.Opers
+      Demo.DemoPage
+      Demo.Handlers
+      Demo.MockData
+      Demo.RouteDef
       HttpSup.CorsPolicy
       HttpSup.JWT
       HttpSup.Types
@@ -42,13 +47,20 @@ library
       Options.Cli
       Options.ConfFile
       Options.Runtime
+      Routing.TopDef
+      Routing.TopHandlers
       ServeApi
-      Wapp.DemoPage
-      Wapp.MockData
-      Wapp.Opers
-      Wapp.Router
-      WordPress.ApiTypes
+      Wapp.Handlers
+      Wapp.HtmxSupport
+      Wapp.JSSupport
+      Wapp.Registry
+      Wapp.RouteDef
+      Wapp.Types
+      Wapp.WsRouter
+      WordPress.Functions
       WordPress.Handlers
+      WordPress.Opers
+      WordPress.RouteDef
       WordPress.Wrapper
   other-modules:
       Paths_easywordy
@@ -83,6 +95,8 @@ library
     , http-media
     , http-types
     , inline-c
+    , inline-js
+    , inline-js-core
     , io-streams
     , jose
     , lens
@@ -93,6 +107,7 @@ library
     , mysql-haskell
     , optparse-applicative
     , postgresql-binary
+    , rio
     , safe-exceptions
     , servant
     , servant-auth
@@ -105,6 +120,7 @@ library
     , text
     , time
     , unix
+    , uuid
     , vector
     , wai
     , wai-cors
@@ -150,6 +166,8 @@ executable easywordy
     , http-media
     , http-types
     , inline-c
+    , inline-js
+    , inline-js-core
     , io-streams
     , jose
     , lens
@@ -160,6 +178,7 @@ executable easywordy
     , mysql-haskell
     , optparse-applicative
     , postgresql-binary
+    , rio
     , safe-exceptions
     , servant
     , servant-auth
@@ -172,6 +191,7 @@ executable easywordy
     , text
     , time
     , unix
+    , uuid
     , vector
     , wai
     , wai-cors
@@ -218,6 +238,8 @@ test-suite easywordy-test
     , http-media
     , http-types
     , inline-c
+    , inline-js
+    , inline-js-core
     , io-streams
     , jose
     , lens
@@ -228,6 +250,7 @@ test-suite easywordy-test
     , mysql-haskell
     , optparse-applicative
     , postgresql-binary
+    , rio
     , safe-exceptions
     , servant
     , servant-auth
@@ -240,6 +263,7 @@ test-suite easywordy-test
     , text
     , time
     , unix
+    , uuid
     , vector
     , wai
     , wai-cors

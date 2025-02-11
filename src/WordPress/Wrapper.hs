@@ -136,8 +136,8 @@ cleanupPhp =
   |]
 
 
-handleRequest :: Rt.RunOptions -> Request -> IO (ByteString, NominalDiffTime)
-handleRequest rtOpts req = do
+handlePhpRequest :: Rt.RunOptions -> Request -> IO (ByteString, NominalDiffTime)
+handlePhpRequest rtOpts req = do
   invokeFile rtOpts (rtOpts.wp.rootPath </> req.uri) req.queryArgs
 
 
