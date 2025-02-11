@@ -22,8 +22,9 @@ import Language.JavaScript.Inline
 import Language.JavaScript.Inline.Core
 
 
-newtype JSReturn = JSReturn {
+data JSReturn = JSReturn {
     result :: Text
+    , content :: Text
   }
   deriving (Generic, Show, FromJSON)
   deriving FromJS via (Aeson JSReturn)
@@ -54,7 +55,7 @@ runElmTest (Aeson -> aPath) = do
       // console.warn("@[doTest] JS doTest end.")
 
       const value = await innerVal;
-      return { "result": value }
+      return value
     }
 
     const result = await doTest("BuildPage")
@@ -84,13 +85,16 @@ initJS libPath moduleName = do
   rsA <- evaluate rezA :: IO JSVal
   return (session, elmModule)
 
+endJS :: Session -> IO ()
+endJS session = do
+  closeSession session
 
 runElmFunction :: Session -> JSVal -> Text -> Text -> IO JSReturn
 runElmFunction session elmModule moduleName functionName = do
   putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName <> ", functionName: " <> unpack functionName
   let
-    fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
+    fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
   rezA <- eval session [js|
       const app = ($elmModule.default)['Elm'][$mNameLBS].init({ flags: "test" })
   
@@ -100,18 +104,22 @@ runElmFunction session elmModule moduleName functionName = do
       });
 
       updateInternal = (aValue) => {
-        resolvePromise(aValue)
+        resolvePromise(JSON.parse(aValue))
       }
 
       doTest = async (fctName) => {
         app.ports.log && app.ports.log.subscribe(updateInternal)
-        app.ports.recvMsg && app.ports.recvMsg.send("doPage")
+        console.warn("@[runElmFunction] sending: ", fctName)
+        app.ports.recvMsg && app.ports.recvMsg.send(fctName)
 
         const value = await innerVal
-        return { "result": value }
+        return value
       }
 
-      const result = await doTest($fctNameLBS)
+      // For some reason, doing an op of the haskell-initiated variable makes it proper
+      // JS instead of <Buffer ...>.
+      const strFctName = "" + $fctNameLBS
+      const result = await doTest(strFctName)
       return result    
     |]
   evaluate rezA :: IO JSReturn

@@ -13,7 +13,7 @@ data HxWsHeaders = HxWsHeaders {
     request :: Text
     , trigger :: Maybe Text
     , triggerName :: Maybe Text
-    , target :: Text
+    , target :: Maybe Text
     , currentURL :: Text
     , mid :: Maybe Text
     , args :: Maybe Text
@@ -26,7 +26,7 @@ instance FromJSON HxWsHeaders where
     obj .: "HX-Request"
     <*> obj .:? "HX-Trigger"
     <*> obj .:? "HX-Trigger-Name"
-    <*> obj .: "HX-Target"
+    <*> obj .:? "HX-Target"
     <*> obj .: "HX-Current-URL"
     <*> obj .:? "mid"
     <*> obj .:? "args"

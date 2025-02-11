@@ -27,12 +27,12 @@ routeRequest refEnv execCtxt anID argMap =
   case Mp.lookup anID execCtxt.resolvedApp.functions of
     Nothing -> do
       putStrLn $ "@[routeRequest] templatePath not found: " <> show anID
-      pure $ Left "<div id=\"mainContainer\"></div>"
+      pure . Left $ "ERROR: templatePath not found: " <> T.unpack anID
     Just (ExecFileRL templatePath _) -> do
       putStrLn $ "@[routeRequest] templatePath: " <> templatePath
       response <- liftIO $ Lbs.readFile (refEnv.runOpts.zb.zbRootPath </> templatePath)
       -- putStrLn $ "@[receiveStream] sending " <> show (Bs.length response) <> " bytes."
-      pure $ Right $ "<div id=\"mainContainer\">" <> response <> "</div>"
+      pure . Right $ response
     Just (FunctionRL fetchFunc) -> do
       putStrLn $ "@[routeRequest] function: " <> T.unpack anID
       -- The 'fmap fromStrict' creates the monadic converter, and the '<$>' applies it
@@ -40,12 +40,16 @@ routeRequest refEnv execCtxt anID argMap =
       case fetchFunc of
         Internal fct ->
           fmap Lbs.fromStrict <$> fct refEnv.runOpts refEnv.pgPool argMap
-        External (moduleName,fctName) -> do
+        External (libPath, moduleName,fctName) -> do
           rezA <- try $ Jss.runElmFunction execCtxt.jsSession execCtxt.jsModule moduleName fctName
           case rezA of
             Left err -> do
               putStrLn $ "@[routeRequest] Jss.runElmFunction err: " <> show (err :: SomeException)
-              pure $ Left "<div id=\"mainContainer\"></div>"
+              pure . Left $ "ERROR: Jss.runElmFunction err: " <> show (err :: SomeException)
             Right jsReturn -> do
               putStrLn "@[routeRequest] Jss.runElmFunction finished."
-              pure . Right $ Lbs.fromStrict . T.encodeUtf8 $ jsReturn.result
+              case jsReturn.result of
+                "ok" ->
+                  pure . Right $ Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content
+                "err" ->
+                  pure . Left $ "ERROR: " <> T.unpack jsReturn.content

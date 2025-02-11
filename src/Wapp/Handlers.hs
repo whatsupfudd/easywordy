@@ -13,7 +13,7 @@ import qualified Data.Set as St
 import Prelude as P
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8)
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.UUID as Uu
 import qualified Data.UUID.V4 as Uu
 
@@ -120,6 +120,7 @@ wsStreamInit sid conn = do
       execCtx = ExecContext session resolvedApp Mp.empty RunningST jsSession jsModule
     P.putStrLn $ "@[streamHandler] starting new session: " <> show fakeSessionID
     (result, finalCtxt, messageSet) <- Rws.runRWST socketLoop refEnv execCtx
+    Jss.endJS jsSession
     pure ()
 
   socketLoop :: AppContext ()
@@ -166,7 +167,7 @@ wsStreamInit sid conn = do
               Nothing ->
                 case hxMsg.headers.mid of
                   Nothing ->
-                    liftIO $ WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
+                    liftIO $ WS.sendTextData conn  ("<div class=\"text-red\"> NO MID</div>" :: Bs.ByteString)
                   Just anID -> do
                     let
                       argMap = case hxMsg.headers.args of
@@ -179,9 +180,14 @@ wsStreamInit sid conn = do
                     case rezA of
                       Left errMsg -> do
                         liftIO . P.putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
-                        liftIO $ WS.sendTextData conn ("<div id=\"mainContainer\"></div>" :: Bs.ByteString)
-                      Right aHtml -> do
-                        liftIO $ WS.sendTextData conn aHtml
+                        liftIO $ WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8 . T.pack) errMsg <> "</div>" :: Bs.ByteString)
+                      Right aHtml ->
+                        let
+                          response = case hxMsg.headers.target of
+                            Just aValue -> "<div id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\">" <> aHtml <> "</div>"
+                            Nothing -> aHtml
+                        in
+                        liftIO $ WS.sendTextData conn response
               Just aText ->
                 liftIO $ WS.sendTextData conn $ H.renderHtml $ Dmo.demoReply hxMsg.wsMessage
       WS.Binary msg ->

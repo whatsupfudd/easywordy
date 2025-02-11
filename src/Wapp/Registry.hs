@@ -96,7 +96,7 @@ functionResolver libs fctDef =
         aName ->
           case Mp.lookup aName libs of
             Just aPath ->
-              Right (fctDef.fid, FunctionRL $ External (aName, aPath))
+              Right (fctDef.fid, FunctionRL $ External (aPath, aName, pairRef.ident))
             Nothing ->
               Left $ "Unknown library: " <> unpack aName
 
