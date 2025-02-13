@@ -77,9 +77,9 @@ initJS libPath moduleName = do
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
   rezA <- eval session [js|
     console.warn("@[initJS] module: ", $elmModule.default)
-    // console.warn("@[initJS] mNameLBS: ", $mNameLBS)
+    console.warn("@[initJS] mNameLBS: ", $mNameLBS)
 
-    const app = ($elmModule.default)['Elm'][$mNameLBS].init({ flags: "test" })
+    const app = ($elmModule.default)['Elm'][$mNameLBS].init({ flags: { "locale" : "en" } })
     return app
   |]
   rsA <- evaluate rezA :: IO JSVal
@@ -96,7 +96,7 @@ runElmFunction session elmModule moduleName functionName = do
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
   rezA <- eval session [js|
-      const app = ($elmModule.default)['Elm'][$mNameLBS].init({ flags: "test" })
+      const app = ($elmModule.default)['Elm'][$mNameLBS].init({ "flags": { "locale" : "en" } })
   
       let resolvePromise
       let innerVal = new Promise((resolve) => {
@@ -110,7 +110,7 @@ runElmFunction session elmModule moduleName functionName = do
       doTest = async (fctName) => {
         app.ports.log && app.ports.log.subscribe(updateInternal)
         console.warn("@[runElmFunction] sending: ", fctName)
-        app.ports.recvMsg && app.ports.recvMsg.send(fctName)
+        app.ports.recvMsg && app.ports.recvMsg.send({ "fct" : fctName , "args" : { "name" : "John Smith" } })
 
         const value = await innerVal
         return value
