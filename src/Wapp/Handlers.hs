@@ -16,15 +16,17 @@ import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.UUID as Uu
 import qualified Data.UUID.V4 as Uu
-
 import qualified Network.WebSockets as WS
+
+import qualified Data.Aeson as Ae
+import qualified Data.Aeson.KeyMap as Aek
+import Data.Aeson (eitherDecode)
 
 import Servant.Server.Generic (AsServerT, genericServerT)
 import Servant.API.Generic (ToServant)
 
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
-import Data.Aeson (eitherDecode)
 
 import Hasql.Pool (Pool)
 
@@ -168,26 +170,40 @@ wsStreamInit sid conn = do
                 case hxMsg.headers.mid of
                   Nothing ->
                     liftIO $ WS.sendTextData conn  ("<div class=\"text-red\"> NO MID</div>" :: Bs.ByteString)
-                  Just anID -> do
+                  Just anID ->
                     let
-                      argMap = case hxMsg.headers.args of
-                        Nothing -> Mp.empty
-                        Just args -> Mp.fromList $ map (\argValue -> case T.splitOn "=" argValue of
-                          [key, value] -> (key, TextRA value)
-                          _ -> ("", IntRA 0)) $ T.splitOn "&" args
+                      jsonParams = case hxMsg.headers.params of
+                        Nothing -> Ae.Object Aek.empty
+                        Just params -> params
+                    in do
+                    {-
+                    let
+                      eiJsonParams = case hxMsg.headers.params of
+                        Nothing -> Right $ Ae.Object Aek.empty
+                        Just params -> case (Ae.decode $ LBS.fromStrict $ encodeUtf8 params :: Maybe Ae.Value) of
+                          Just aValue -> Right aValue
+                          _ -> Left $ maybe "@[receiveStream] invalid json params on empty string!" ("@[receiveStream] invalid json params." <>) hxMsg.headers.params
                     -- TODO: need to extract the argMap from the ws-messsage.
-                    rezA <- liftIO $ routeRequest refEnv execCtxt anID argMap
-                    case rezA of
-                      Left errMsg -> do
-                        liftIO . P.putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
-                        liftIO $ WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8 . T.pack) errMsg <> "</div>" :: Bs.ByteString)
-                      Right aHtml ->
-                        let
-                          response = case hxMsg.headers.target of
-                            Just aValue -> "<div id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\">" <> aHtml <> "</div>"
-                            Nothing -> aHtml
-                        in
-                        liftIO $ WS.sendTextData conn response
+                    case eiJsonParams of
+                      Left errMsg ->
+                        liftIO $ do
+                          P.putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
+                          WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8) errMsg <> "</div>" :: Bs.ByteString)
+                      Right jsonParams -> do
+                      -}
+                        rezA <- liftIO $ routeRequest refEnv execCtxt hxMsg anID jsonParams
+                        case rezA of
+                          Left errMsg ->
+                            liftIO $ do
+                              P.putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
+                              WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8 . T.pack) errMsg <> "</div>" :: Bs.ByteString)
+                          Right aHtml ->
+                            let
+                              response = case hxMsg.headers.target of
+                                Just aValue -> "<div id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\">" <> aHtml <> "</div>"
+                                Nothing -> aHtml
+                            in
+                            liftIO $ WS.sendTextData conn response
               Just aText ->
                 liftIO $ WS.sendTextData conn $ H.renderHtml $ Dmo.demoReply hxMsg.wsMessage
       WS.Binary msg ->

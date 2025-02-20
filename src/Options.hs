@@ -22,9 +22,9 @@ import qualified System.Directory as Sdir
 import qualified HttpSup.CorsPolicy as Hcrs
 
 import qualified Options.Cli as Cl (CliOptions (..), EnvOptions (..))
-import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..), WpOptions (..), ZbOptions (..))
+import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..), WpOptions (..), ZbOptions (..), OpenAiOptions (..))
 import qualified Options.Runtime as Rt (RunOptions (..), defaultRun, WpConfig (..), defaultWpConf, PgDbConfig (..), defaultPgDbConf
-              , MqlDbConfig (..), defaultMqlDbConf, ZbConfig (..), defaultZbConf)
+              , MqlDbConfig (..), defaultMqlDbConf, ZbConfig (..), defaultZbConf, OpenAiConfig (..), defaultOpenAiConf)
 
 
 type ConfError = Either String ()
@@ -34,7 +34,7 @@ type PgDbOptIOSt = StateT Rt.PgDbConfig (StateT Rt.RunOptions IO) ConfError
 type WpOptIOSt = StateT Rt.WpConfig (StateT Rt.RunOptions IO) ConfError
 type MqlDbOptIOSt = StateT Rt.MqlDbConfig (StateT Rt.WpConfig (StateT Rt.RunOptions IO)) ConfError
 type ZbOptIOSt = StateT Rt.ZbConfig (StateT Rt.RunOptions IO) ConfError
-
+type OpenAiOptIOSt = StateT Rt.OpenAiConfig (StateT Rt.RunOptions IO) ConfError
 
 mconf :: MonadState s m => Maybe t -> (t -> s -> s) -> m ()
 mconf mbOpt setter =
@@ -77,6 +77,7 @@ mergeOptions cli file env = do
     for_ file.cors parseCors
     innerConf (\nVal s -> s { Rt.wp = nVal }) parseWp Rt.defaultWpConf file.wordpress
     innerConf (\nVal s -> s { Rt.zb = nVal }) parseZb Rt.defaultZbConf file.zhbzns
+    innerConf (\nVal s -> s { Rt.openai = nVal }) parseOpenAi Rt.defaultOpenAiConf file.openai
     pure $ Right ()
 
 
@@ -102,6 +103,11 @@ mergeOptions cli file env = do
     mconf zbO.zbRootPath $ \nVal s -> s { Rt.zbRootPath = nVal }
     pure $ Right ()
 
+  parseOpenAi :: Fo.OpenAiOptions -> OpenAiOptIOSt
+  parseOpenAi openAiO = do
+    mconf openAiO.apiKey $ \nVal s -> s { Rt.apiKey = Just nVal }
+    mconf openAiO.model $ \nVal s -> s { Rt.model = Just nVal }
+    pure $ Right ()
 
   parseMqlDb :: Fo.MqlDbOpts -> MqlDbOptIOSt
   parseMqlDb dbO = do

@@ -186,7 +186,8 @@ data RouteFunction =
   | External ExternalFunction
  deriving (Generic)
 
-type InternalFunction = Rt.RunOptions -> Hp.Pool -> Mp.Map Text RouteArg -> IO (Either String Bs.ByteString)
+type InternalArgs = (Value, Maybe Text)
+type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String Bs.ByteString)
 type ExternalFunction = (Text, Text, Text)
 
 data RouteArg =

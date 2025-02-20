@@ -75,6 +75,20 @@ packages:
   original:
     hackage: crypton-x509-system-1.6.7@sha256:023ed573d82983bc473a37a89e0434a085b413be9f68d07e085361056afd4637,1532
 - completed:
+    hackage: crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
+    pantry-tree:
+      sha256: d4a0135f11218614fcd912cffaf54de8f749caca8696380e2589cbcfd64cc681
+      size: 639
+  original:
+    hackage: crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
+- completed:
+    hackage: crypton-connection-0.4.3@sha256:9d4ff9c98f474b1d6f3809b9a30f3cbac0094cddf5d8cbdccd1f523b699e7333,1633
+    pantry-tree:
+      sha256: 8969e68d2914c8d44957f6eb68049131c8325bdfb926051ab023daca9f8fc6e5
+      size: 464
+  original:
+    hackage: crypton-connection-0.4.3@sha256:9d4ff9c98f474b1d6f3809b9a30f3cbac0094cddf5d8cbdccd1f523b699e7333,1633
+- completed:
     hackage: tls-2.0.6@sha256:bd83146d767b0a2f70b070128448423e2b008241dce1910f891953a917abe33c,6119
     pantry-tree:
       sha256: e87e4858c91947cb1795f68ae8b6dfc519ec0351cebbbfc259c5719441c0a077
@@ -82,12 +96,19 @@ packages:
   original:
     hackage: tls-2.0.6@sha256:bd83146d767b0a2f70b070128448423e2b008241dce1910f891953a917abe33c,6119
 - completed:
-    hackage: crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
+    hackage: http-client-0.7.18@sha256:fadcb57b2f36bbd1773538e10af7da581ef1fa479b4f7d30f55cba3247f71b8c,5613
     pantry-tree:
-      sha256: d4a0135f11218614fcd912cffaf54de8f749caca8696380e2589cbcfd64cc681
-      size: 639
+      sha256: 457feeb8879d8007e3999d4f3456e50f7460e6c720bfc5b3f7d0501f5fd802e1
+      size: 2547
   original:
-    hackage: crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
+    hackage: http-client-0.7.18@sha256:fadcb57b2f36bbd1773538e10af7da581ef1fa479b4f7d30f55cba3247f71b8c,5613
+- completed:
+    hackage: http-client-tls-0.3.6.4@sha256:17217717fbbcda951b4ff000a7fbce416975b154c9bc09e56d9cac8ffb3b9525,2040
+    pantry-tree:
+      sha256: 4b316381e910056a29ad08ac6ffd430b2df97a84c0875c58d0f88b7f3113aa93
+      size: 435
+  original:
+    hackage: http-client-tls-0.3.6.4@sha256:17217717fbbcda951b4ff000a7fbce416975b154c9bc09e56d9cac8ffb3b9525,2040
 snapshots:
 - completed:
     sha256: a81fb3877c4f9031e1325eb3935122e608d80715dc16b586eb11ddbff8671ecd

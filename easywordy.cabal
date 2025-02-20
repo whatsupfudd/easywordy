@@ -28,6 +28,7 @@ library
       Api.Handlers
       Api.Session
       Api.Types
+      Chat.Logic
       Commands
       Commands.Help
       Commands.Server
@@ -83,6 +84,7 @@ library
     , blaze-svg
     , bytestring
     , case-insensitive
+    , connection >=0.3.2
     , containers
     , directory
     , exceptions
@@ -92,6 +94,9 @@ library
     , hasql-pool
     , hasql-th
     , http-api-data
+    , http-client >=0.7.17
+    , http-client-tls >=0.3.8
+    , http-conduit >=2.3.8
     , http-media
     , http-types
     , inline-c
@@ -105,6 +110,7 @@ library
     , mmark
     , mtl
     , mysql-haskell
+    , openai-client
     , optparse-applicative
     , postgresql-binary
     , rio
@@ -153,6 +159,7 @@ executable easywordy
     , blaze-svg
     , bytestring
     , case-insensitive
+    , connection >=0.3.2
     , containers
     , directory
     , easywordy
@@ -163,6 +170,9 @@ executable easywordy
     , hasql-pool
     , hasql-th
     , http-api-data
+    , http-client >=0.7.17
+    , http-client-tls >=0.3.8
+    , http-conduit >=2.3.8
     , http-media
     , http-types
     , inline-c
@@ -176,6 +186,7 @@ executable easywordy
     , mmark
     , mtl
     , mysql-haskell
+    , openai-client
     , optparse-applicative
     , postgresql-binary
     , rio
@@ -225,6 +236,7 @@ test-suite easywordy-test
     , blaze-svg
     , bytestring
     , case-insensitive
+    , connection >=0.3.2
     , containers
     , directory
     , easywordy
@@ -235,6 +247,9 @@ test-suite easywordy-test
     , hasql-pool
     , hasql-th
     , http-api-data
+    , http-client >=0.7.17
+    , http-client-tls >=0.3.8
+    , http-conduit >=2.3.8
     , http-media
     , http-types
     , inline-c
@@ -248,6 +263,7 @@ test-suite easywordy-test
     , mmark
     , mtl
     , mysql-haskell
+    , openai-client
     , optparse-applicative
     , postgresql-binary
     , rio

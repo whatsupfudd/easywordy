@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 module WordPress.Functions where
 
 import qualified Data.ByteString as Bs
@@ -11,6 +13,9 @@ import qualified Data.Vector as V
 import Data.Word (Word8)
 import qualified Numeric as Nm
 
+import GHC.Generics (Generic)
+import qualified Data.Aeson as Ae
+
 import Hasql.Pool (Pool)
 
 import qualified Text.Blaze.Html5 as H
@@ -20,14 +25,32 @@ import qualified Text.Blaze.Htmx.WebSockets as X
 import qualified Text.Blaze.Internal as Bli
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 
+
 import qualified Options.Runtime as Rt
 import qualified Wapp.Types as Wt
 import WordPress.Opers (getVersions, getFoldersForVersion, getFilesForFolder
           , getConstantsForFile, getAstForFile, getFileDetailsForID
           , getErrorForFile, getFolderDetailsForID)
 
-fetchVersions :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
-fetchVersions rtOpts pgDb argMap = do
+
+newtype VersionParams = VersionParams {
+    versionID :: Int32
+  }
+  deriving (Generic, Ae.FromJSON, Ae.ToJSON)
+
+newtype FolderParams = FolderParams {
+    folderID :: Int32
+  }
+  deriving (Generic, Ae.FromJSON, Ae.ToJSON)
+
+newtype FileParams = FileParams {
+    fileID :: Int32
+  }
+  deriving (Generic, Ae.FromJSON, Ae.ToJSON)
+
+
+fetchVersions :: Rt.RunOptions -> Pool -> Wt.InternalArgs -> IO (Either String Bs.ByteString)
+fetchVersions rtOpts pgDb (jsonParams, _) = do
   rezA <- getVersions pgDb
   case rezA of
     Left err -> pure . Right $ Bs.toStrict . renderHtml $ H.div
@@ -43,133 +66,162 @@ fetchVersions rtOpts pgDb argMap = do
                 H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "ID"
             H.tbody $ do
               mapM_ (\(uid, label) ->
+                let
+                  folderArgs = VersionParams { versionID = uid }
+                  versionParams = T.decodeUtf8 . Bs.toStrict . Ae.encode $ folderArgs
+                in
                 H.tr H.! A.class_ "bg-white border-b dark:bg-gray-800 dark:border-gray-700" $ do
                   -- hx-target="#mainContainer" hx-swap="outerHtml" hx-headers='{"mid":"wp_versions_1"}'
                   H.td H.! A.scope "row" H.! A.class_ "px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
                         H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
-                        H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_folders_1\", \"args\":\"version=" <> T.pack (show uid) <> "\"}") $ H.toHtml label
+                        H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_folders_1\", \"params\":" <> versionParams <> "}") $ H.toHtml label
                   H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
                 ) versions
       in
       pure . Right . Bs.toStrict . renderHtml $ response
 
 
-fetchFolders :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
-fetchFolders rtOpts pgDb argMap = do
+fetchFolders :: Rt.RunOptions -> Pool -> Wt.InternalArgs -> IO (Either String Bs.ByteString)
+fetchFolders rtOpts pgDb (jsonParams, _) =
   let
-    versionID = case Mp.lookup "version" argMap of
-      Just (Wt.TextRA versionID) -> read . T.unpack $ versionID
-      _ -> 1
-  rezA <- getFoldersForVersion pgDb versionID
-  case rezA of
-    Left err -> pure . Right $ Bs.toStrict . renderHtml $ H.div
+    eiVersionParams = case Ae.fromJSON jsonParams :: Ae.Result VersionParams of
+      Ae.Success aValue -> Right aValue
+      Ae.Error errMsg -> Left errMsg
+  in
+  case eiVersionParams of
+    Left errMsg -> pure . Right $ Bs.toStrict . renderHtml $ H.div
         H.! A.id "mainContainer"
-        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
-    Right versions ->
-      let
-        response =  H.div H.! A.id "mainContainer" $
-          H.table H.! A.class_ "p-4 w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400" $ do
-            H.thead H.! A.class_ "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"$ do
-              H.tr $ do
-                H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "Label"
-                H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "ID"
-            H.tbody $ do
-              mapM_ (\(uid, label) ->
-                H.tr H.! A.class_ "bg-white border-b dark:bg-gray-800 dark:border-gray-700" $ do
-                  H.td H.! A.class_ "px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-                      H.! X.wsSend "" H.! X.hxTarget "#mainContainer"
-                      H.! X.hxSwap "outerHtml" H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_files_1\", \"args\":\"folder=" <> T.pack (show uid) <> "\"}") $
-                        H.toHtml (if label == "" then "<wp_root>" else label)
-                  H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
-                ) versions
-      in
-      pure . Right . Bs.toStrict . renderHtml $ response
+        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
+    Right folderArgs -> do
+      rezA <- getFoldersForVersion pgDb folderArgs.versionID
+      case rezA of
+        Left err -> pure . Right $ Bs.toStrict . renderHtml $ H.div
+          H.! A.id "mainContainer"
+          H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
+        Right versions ->
+          let
+            response =  H.div H.! A.id "mainContainer" $
+              H.table H.! A.class_ "p-4 w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400" $ do
+                H.thead H.! A.class_ "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"$ do
+                  H.tr $ do
+                    H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "Label"
+                    H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "ID"
+                H.tbody $ do
+                  mapM_ (\(uid, label) ->
+                    let
+                      folderParams = FolderParams { folderID = uid }
+                      folderParamsStr = T.decodeUtf8 . Bs.toStrict . Ae.encode $ folderParams
+                    in
+                    H.tr H.! A.class_ "bg-white border-b dark:bg-gray-800 dark:border-gray-700" $ do
+                      H.td H.! A.class_ "px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                          H.! X.wsSend "" H.! X.hxTarget "#mainContainer"
+                          H.! X.hxSwap "outerHtml" H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_files_1\", \"params\":" <> folderParamsStr <> "}") $
+                            H.toHtml (if label == "" then "<wp_root>" else label)
+                      H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
+                    ) versions
+          in
+          pure . Right . Bs.toStrict . renderHtml $ response
 
 
-fetchFiles :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
-fetchFiles rtOpts pgDb argMap = do
+fetchFiles :: Rt.RunOptions -> Pool -> Wt.InternalArgs -> IO (Either String Bs.ByteString)
+fetchFiles rtOpts pgDb (jsonParams, _) =
   let
-    folderID = case Mp.lookup "folder" argMap of
-      Just (Wt.TextRA folderID) -> read . T.unpack $ folderID
-      _ -> 1
-  rezA <- getFilesForFolder pgDb folderID
-  rezB <- getFolderDetailsForID pgDb folderID
-  case rezA of
-    Left err -> pure . Right $ Bs.toStrict . renderHtml $ H.div
+    eiFolderParams = case Ae.fromJSON jsonParams :: Ae.Result FolderParams of
+      Ae.Success aValue -> Right aValue
+      Ae.Error errMsg -> Left errMsg
+  in
+  case eiFolderParams of
+    Left errMsg -> pure . Right $ Bs.toStrict . renderHtml $ H.div
         H.! A.id "mainContainer"
-        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
-    Right files ->
+        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
+    Right folderParams -> do
+      rezA <- getFilesForFolder pgDb folderParams.folderID
+      rezB <- getFolderDetailsForID pgDb folderParams.folderID
+      case rezA of
+        Left err -> pure . Right $ Bs.toStrict . renderHtml $ H.div
+            H.! A.id "mainContainer"
+            H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
+        Right files ->
+          let
+            folderPointer = case rezB of
+              Right (Just (versionID, folderPath)) -> do
+                H.a H.! A.class_ "text-blue-900 dark:text-blue-300"
+                    H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
+                    H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_folders_1\", \"args\":\"version=" <> T.pack (show versionID) <> "\"}") $ H.toHtml ("UP" :: Text)
+                H.div H.! A.class_ "mx-4text-sm text-gray-900 dark:text-gray-300" $ H.toHtml (if folderPath == "" then "wp_root" else "> wp_root/" <> folderPath)
+              _ -> H.toHtml ("<i>No folder</i>" :: Text)
+            response =  H.div H.! A.id "mainContainer" $ do
+              folderPointer
+              H.table H.! A.class_ "p-4 w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400" $ do
+                H.thead H.! A.class_ "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"$ do
+                  H.tr $ do
+                    H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "Label"
+                    H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "ID"
+                H.tbody $ do
+                  mapM_ (\(uid, label) -> 
+                    let
+                      fileParams = FileParams { fileID = uid }
+                      fileParamsStr = T.decodeUtf8 . Bs.toStrict . Ae.encode $ fileParams
+                    in
+                    H.tr H.! A.class_ "bg-white border-b dark:bg-gray-800 dark:border-gray-700" $ do
+                      H.td H.! A.class_ "px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
+                          H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
+                          H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_fileDetails_1\", \"params\":" <> fileParamsStr <> "}") $ H.toHtml label
+                      H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
+                    ) files
+          in
+          pure . Right . Bs.toStrict . renderHtml $ response
 
+
+fetchFileDetails :: Rt.RunOptions -> Pool -> Wt.InternalArgs -> IO (Either String Bs.ByteString)
+fetchFileDetails rtOpts pgDb (jsonParams, _) =
+  let
+    eiFileParams = case Ae.fromJSON jsonParams :: Ae.Result FileParams of
+      Ae.Success aValue -> Right aValue
+      Ae.Error errMsg -> Left errMsg
+  in
+  case eiFileParams of
+    Left errMsg -> pure . Right $ Bs.toStrict . renderHtml $ H.div
+        H.! A.id "mainContainer"
+        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
+    Right fileParams -> do
+      rezA <- getAstForFile pgDb fileParams.fileID
+      rezB <- getConstantsForFile pgDb fileParams.fileID
+      rezC <- getFileDetailsForID pgDb fileParams.fileID
       let
-        folderPointer = case rezB of
-          Right (Just (versionID, folderPath)) -> do
+        folderPointer = case rezC of
+          Right (Just (folderID, fileName, folderPath)) -> do
             H.a H.! A.class_ "text-blue-900 dark:text-blue-300"
                 H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
-                H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_folders_1\", \"args\":\"version=" <> T.pack (show versionID) <> "\"}") $ H.toHtml ("UP" :: Text)
-            H.div H.! A.class_ "mx-4text-sm text-gray-900 dark:text-gray-300" $ H.toHtml (if folderPath == "" then "wp_root" else "> wp_root/" <> folderPath)
+                H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_files_1\", \"args\":\"folder=" <> T.pack (show folderID) <> "\"}") $ H.toHtml ("UP" :: Text)
+            H.div H.! A.class_ "mx-4text-sm text-gray-900 dark:text-gray-300" $ H.toHtml ("> wp_root/" <> folderPath <> "/" <> fileName)
           _ -> H.toHtml ("<i>No folder</i>" :: Text)
-        response =  H.div H.! A.id "mainContainer" $ do
-          folderPointer
-          H.table H.! A.class_ "p-4 w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400" $ do
-            H.thead H.! A.class_ "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"$ do
-              H.tr $ do
-                H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "Label"
-                H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "ID"
-            H.tbody $ do
-              mapM_ (\(uid, label) -> 
-                H.tr H.! A.class_ "bg-white border-b dark:bg-gray-800 dark:border-gray-700" $ do
-                  H.td H.! A.class_ "px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white"
-                      H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
-                      H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_fileDetails_1\", \"args\":\"file=" <> T.pack (show uid) <> "\"}") $ H.toHtml label
-                  H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
-                ) files
-      in
-      pure . Right . Bs.toStrict . renderHtml $ response
 
-
-fetchFileDetails :: Rt.RunOptions -> Pool -> Mp.Map Text Wt.RouteArg -> IO (Either String Bs.ByteString)
-fetchFileDetails rtOpts pgDb argMap = do
-  let
-    fileID = case Mp.lookup "file" argMap of
-      Just (Wt.TextRA fileID) -> read . T.unpack $ fileID
-      _ -> 1
-  rezA <- getAstForFile pgDb fileID
-  rezB <- getConstantsForFile pgDb fileID
-  rezC <- getFileDetailsForID pgDb fileID
-  let
-    folderPointer = case rezC of
-      Right (Just (folderID, fileName, folderPath)) -> do
-        H.a H.! A.class_ "text-blue-900 dark:text-blue-300"
-            H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
-            H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_files_1\", \"args\":\"folder=" <> T.pack (show folderID) <> "\"}") $ H.toHtml ("UP" :: Text)
-        H.div H.! A.class_ "mx-4text-sm text-gray-900 dark:text-gray-300" $ H.toHtml ("> wp_root/" <> folderPath <> "/" <> fileName)
-      _ -> H.toHtml ("<i>No folder</i>" :: Text)
-
-  case (rezA, rezB) of
-    (Left err, _) -> pure . Right $ Bs.toStrict . renderHtml $
-        H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
-    (_, Left err) -> pure . Right $ Bs.toStrict . renderHtml $
-        H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
-    (Right (Just ast), Right (Just constants)) ->
-      let
-        derefedAst = printAst ast constants
-      in
-      pure . Right $ Bs.toStrict . renderHtml $ H.div H.! A.id "mainContainer" $ do
-        folderPointer
-        derefedAst
-    _ -> do
-      rezErr <- getErrorForFile pgDb fileID
-      case rezErr of
-        Left err -> pure . Right $ Bs.toStrict . renderHtml $
-          H.div H.! A.id "mainContainer" H.! A.class_ "mx-4 text-gray-900 dark:text-gray-300" $ H.toHtml err
-        Right (Just (errMsg, procTime)) ->
-          pure . Right $ Bs.toStrict . renderHtml $ do
-            H.div H.! A.id "mainContainer" H.! A.class_ "p-4 text-gray-900 dark:text-gray-300" $ do
-              folderPointer
-              H.br
-              H.toHtml ("Error: " <> errMsg)
-              H.br
-              H.toHtml ("Proc time: " <> T.pack (show procTime) <> "s" :: Text)
+      case (rezA, rezB) of
+        (Left err, _) -> pure . Right $ Bs.toStrict . renderHtml $
+            H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
+        (_, Left err) -> pure . Right $ Bs.toStrict . renderHtml $
+            H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
+        (Right (Just ast), Right (Just constants)) ->
+          let
+            derefedAst = printAst ast constants
+          in
+          pure . Right $ Bs.toStrict . renderHtml $ H.div H.! A.id "mainContainer" $ do
+            folderPointer
+            derefedAst
+        _ -> do
+          rezErr <- getErrorForFile pgDb fileParams.fileID
+          case rezErr of
+            Left err -> pure . Right $ Bs.toStrict . renderHtml $
+              H.div H.! A.id "mainContainer" H.! A.class_ "mx-4 text-gray-900 dark:text-gray-300" $ H.toHtml err
+            Right (Just (errMsg, procTime)) ->
+              pure . Right $ Bs.toStrict . renderHtml $ do
+                H.div H.! A.id "mainContainer" H.! A.class_ "p-4 text-gray-900 dark:text-gray-300" $ do
+                  folderPointer
+                  H.br
+                  H.toHtml ("Error: " <> errMsg)
+                  H.br
+                  H.toHtml ("Proc time: " <> T.pack (show procTime) <> "s" :: Text)
 
 
 printAst :: Bs.ByteString -> Bs.ByteString -> H.Html

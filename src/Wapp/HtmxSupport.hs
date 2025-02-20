@@ -16,7 +16,7 @@ data HxWsHeaders = HxWsHeaders {
     , target :: Maybe Text
     , currentURL :: Text
     , mid :: Maybe Text
-    , args :: Maybe Text
+    , params :: Maybe Value
   }
   deriving stock (Show, Generic)
 
@@ -29,12 +29,12 @@ instance FromJSON HxWsHeaders where
     <*> obj .:? "HX-Target"
     <*> obj .: "HX-Current-URL"
     <*> obj .:? "mid"
-    <*> obj .:? "args"
-
+    <*> obj .:? "params"
 
 data HxWsMessage = HxWsMessage {
     wsMessage :: Maybe Text
     , headers :: HxWsHeaders
+    , content :: Maybe Text
   }
   deriving (Show, Generic)
 
@@ -43,3 +43,4 @@ instance FromJSON HxWsMessage where
   parseJSON (Object obj) = HxWsMessage <$>
     obj .:? "hxid-1"
     <*> obj .: "HEADERS"
+    <*> obj .:? "content"

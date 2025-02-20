@@ -52,11 +52,16 @@ extra-deps:
   - crypton-x509-1.7.7@sha256:bc5834cabe1a301ff1ab50f373a50b5ce237ea4ea01f008f554544ab8cae1686,2268
   - crypton-x509-store-1.6.9@sha256:422b9b9f87a7382c66385d047615b16fc86a68c08ea22b1e0117c143a2d44050,1750
   - crypton-x509-system-1.6.7@sha256:023ed573d82983bc473a37a89e0434a085b413be9f68d07e085361056afd4637,1532
-  - tls-2.0.6@sha256:bd83146d767b0a2f70b070128448423e2b008241dce1910f891953a917abe33c,6119
   - crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
-
+  - crypton-connection-0.4.3@sha256:9d4ff9c98f474b1d6f3809b9a30f3cbac0094cddf5d8cbdccd1f523b699e7333,1633
+  - tls-2.0.6@sha256:bd83146d767b0a2f70b070128448423e2b008241dce1910f891953a917abe33c,6119
+  - http-client-0.7.18@sha256:fadcb57b2f36bbd1773538e10af7da581ef1fa479b4f7d30f55cba3247f71b8c,5613
+  - http-client-tls-0.3.6.4@sha256:17217717fbbcda951b4ff000a7fbce416975b154c9bc09e56d9cac8ffb3b9525,2040
   - ../Lib/inline-js/inline-js
   - ../Lib/inline-js/inline-js-core
+  - ../../../Haskell/OpenAI/LocalLibs/openai-client
+  - ../../../Haskell/OpenAI/LocalLibs/openai-client/openai-gen
+  - ../../../Haskell/OpenAI/LocalLibs/hs-connection
 
 #  - servant-docs
 #  - servant-foreign

@@ -16,6 +16,7 @@ import qualified Data.Yaml as Y
 
 import qualified Options.Runtime as Rt
 import WordPress.Functions (fetchVersions, fetchFolders, fetchFiles, fetchFileDetails)
+import Chat.Logic (receiveMsg)
 import Wapp.Types
 import Data.Char (isLetter)
 
@@ -85,6 +86,19 @@ functionResolver libs fctDef =
                 Right $ FunctionRL $ Internal fetchFiles
               "fetchFileDetails" ->
                 Right $ FunctionRL $ Internal fetchFileDetails
+              _ ->
+                Left $ "Unknown function: " <> unpack pairRef.ident
+          in
+            case eiInternalFct of
+              Left err ->
+                Left err
+              Right fct ->
+                Right (fctDef.fid, fct)
+        "internal.chat" ->
+          let
+            eiInternalFct = case pairRef.ident of
+              "receiveMsg" ->
+                Right $ FunctionRL $ Internal receiveMsg
               _ ->
                 Left $ "Unknown function: " <> unpack pairRef.ident
           in

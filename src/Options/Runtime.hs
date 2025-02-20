@@ -2,6 +2,7 @@ module Options.Runtime (
   defaultRun, RunOptions (..)
   , WpConfig (..), defaultWpConf
   , ZbConfig (..), defaultZbConf
+  , OpenAiConfig (..), defaultOpenAiConf
   , module DB.Connect
 
 ) where
@@ -34,9 +35,23 @@ data ZbConfig = ZbConfig {
   }
   deriving (Show)
 
+data OpenAiConfig = OpenAiConfig {
+  apiKey :: Maybe Text
+  , model :: Maybe Text
+  }
+  deriving (Show)
+
+
 defaultZbConf :: ZbConfig
 defaultZbConf = ZbConfig {
   zbRootPath = "../Lib/ZhopNess/wapp"
+  }
+
+
+defaultOpenAiConf :: OpenAiConfig
+defaultOpenAiConf = OpenAiConfig {
+  apiKey = Nothing
+  , model = Nothing
   }
 
 defaultAppDefs :: FilePath
@@ -52,6 +67,7 @@ data RunOptions = RunOptions {
     , wp :: WpConfig
     , zb :: ZbConfig
     , appDefs :: FilePath
+    , openai :: OpenAiConfig
   }
   deriving (Show)
 
@@ -68,4 +84,5 @@ defaultRun homeDir server port =
     , wp = defaultWpConf
     , zb = defaultZbConf
     , appDefs = defaultAppDefs
+    , openai = defaultOpenAiConf
   }

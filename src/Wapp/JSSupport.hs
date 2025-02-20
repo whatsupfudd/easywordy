@@ -11,12 +11,12 @@ import Control.Exception (evaluate)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as Bs
-import Data.Text (Text, unpack)
+import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as Tio
 import Data.Text.Encoding (encodeUtf8)
 import GHC.Generics ( Generic )
 
-import Data.Aeson ( FromJSON )
+import Data.Aeson ( FromJSON, Value, toJSON, encode )
 
 import Language.JavaScript.Inline
 import Language.JavaScript.Inline.Core
@@ -89,12 +89,13 @@ endJS :: Session -> IO ()
 endJS session = do
   closeSession session
 
-runElmFunction :: Session -> JSVal -> Text -> Text -> IO JSReturn
-runElmFunction session elmModule moduleName functionName = do
+runElmFunction :: Session -> JSVal -> Text -> Text -> Value -> IO JSReturn
+runElmFunction session elmModule moduleName functionName jsonParams = do
   putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName <> ", functionName: " <> unpack functionName
   let
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
+    jsonParamsLBS = encode jsonParams
   rezA <- eval session [js|
       const app = ($elmModule.default)['Elm'][$mNameLBS].init({ "flags": { "locale" : "en" } })
   
@@ -109,8 +110,9 @@ runElmFunction session elmModule moduleName functionName = do
 
       doTest = async (fctName) => {
         app.ports.log && app.ports.log.subscribe(updateInternal)
-        console.warn("@[runElmFunction] sending: ", fctName)
-        app.ports.recvMsg && app.ports.recvMsg.send({ "fct" : fctName , "args" : { "name" : "John Smith" } })
+        const jParams = JSON.parse($jsonParamsLBS + "")
+        console.warn("@[runElmFunction] params: ", jParams)
+        app.ports.recvMsg && app.ports.recvMsg.send({ "fct" : fctName , "params" : jParams })
 
         const value = await innerVal
         return value

@@ -12,6 +12,8 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import System.FilePath.Posix ((</>))
 
+import qualified Data.Aeson as Ae
+
 import Hasql.Pool (Pool)
 
 import Options.Runtime (RunOptions (..), ZbConfig (..))
@@ -19,11 +21,12 @@ import Options.Runtime (RunOptions (..), ZbConfig (..))
 import Control.Lens.Internal.CTypes (Int32)
 import Data.Word (Word8)
 
+import Wapp.HtmxSupport (HxWsMessage (..))
 import Wapp.JSSupport as Jss (runElmFunction, JSReturn (..))
 import Wapp.Types
 
-routeRequest :: ReferenceEnv -> ExecContext -> Text -> Mp.Map Text RouteArg -> IO (Either String Lbs.ByteString)
-routeRequest refEnv execCtxt anID argMap =
+routeRequest :: ReferenceEnv -> ExecContext -> HxWsMessage -> Text -> Ae.Value -> IO (Either String Lbs.ByteString)
+routeRequest refEnv execCtxt hxMsg anID jsonParams =
   case Mp.lookup anID execCtxt.resolvedApp.functions of
     Nothing -> do
       putStrLn $ "@[routeRequest] templatePath not found: " <> show anID
@@ -39,9 +42,9 @@ routeRequest refEnv execCtxt anID argMap =
       -- into the IO instance.
       case fetchFunc of
         Internal fct ->
-          fmap Lbs.fromStrict <$> fct refEnv.runOpts refEnv.pgPool argMap
+          fmap Lbs.fromStrict <$> fct refEnv.runOpts refEnv.pgPool (jsonParams, hxMsg.content)
         External (libPath, moduleName,fctName) -> do
-          rezA <- try $ Jss.runElmFunction execCtxt.jsSession execCtxt.jsModule moduleName fctName
+          rezA <- try $ Jss.runElmFunction execCtxt.jsSession execCtxt.jsModule moduleName fctName jsonParams
           case rezA of
             Left err -> do
               putStrLn $ "@[routeRequest] Jss.runElmFunction err: " <> show (err :: SomeException)

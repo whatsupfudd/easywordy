@@ -68,6 +68,12 @@ data ZbOptions = ZbOptions {
   }
   deriving stock (Show, Generic)
 
+data OpenAiOptions = OpenAiOptions {
+  apiKey :: Maybe Text
+  , model :: Maybe Text
+  }
+  deriving stock (Show, Generic)
+
 
 data FileOptions = FileOptions {
   debug :: Maybe Int
@@ -78,6 +84,7 @@ data FileOptions = FileOptions {
   , cors :: Maybe CorsOpts
   , wordpress :: Maybe WpOptions
   , zhbzns :: Maybe ZbOptions
+  , openai :: Maybe OpenAiOptions
  }
  deriving stock (Show, Generic)
 
@@ -102,6 +109,7 @@ instance Aes.FromJSON JwtOpts
 instance Aes.FromJSON CorsOpts
 instance Aes.FromJSON WpOptions
 instance Aes.FromJSON ZbOptions
+instance Aes.FromJSON OpenAiOptions
 
 parseFileOptions :: FilePath -> IO (Either String FileOptions)
 parseFileOptions filePath =
