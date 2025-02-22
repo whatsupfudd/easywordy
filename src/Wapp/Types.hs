@@ -6,6 +6,7 @@ module Wapp.Types where
 import qualified Control.Monad.RWS.Lazy as Rws
 
 import qualified Data.ByteString as Bs
+import qualified Data.ByteString.Lazy as Lbs
 import Data.Int (Int32)
 import qualified Data.Map as Mp
 import Data.Set (Set (..))
@@ -186,8 +187,15 @@ data RouteFunction =
   | External ExternalFunction
  deriving (Generic)
 
+data FunctionReply =
+  BasicFR Lbs.ByteString
+  | AppendChildFR Lbs.ByteString
+  | AfterEndFR Lbs.ByteString
+ deriving (Generic)
+
+
 type InternalArgs = (Value, Maybe Text)
-type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String Bs.ByteString)
+type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String FunctionReply)
 type ExternalFunction = (Text, Text, Text)
 
 data RouteArg =

@@ -106,6 +106,7 @@ library
     , jose
     , lens
     , lucid
+    , markdown
     , megaparsec
     , mmark
     , mtl
@@ -182,6 +183,7 @@ executable easywordy
     , jose
     , lens
     , lucid
+    , markdown
     , megaparsec
     , mmark
     , mtl
@@ -259,6 +261,7 @@ test-suite easywordy-test
     , jose
     , lens
     , lucid
+    , markdown
     , megaparsec
     , mmark
     , mtl

@@ -25,7 +25,7 @@ import Wapp.HtmxSupport (HxWsMessage (..))
 import Wapp.JSSupport as Jss (runElmFunction, JSReturn (..))
 import Wapp.Types
 
-routeRequest :: ReferenceEnv -> ExecContext -> HxWsMessage -> Text -> Ae.Value -> IO (Either String Lbs.ByteString)
+routeRequest :: ReferenceEnv -> ExecContext -> HxWsMessage -> Text -> Ae.Value -> IO (Either String FunctionReply)
 routeRequest refEnv execCtxt hxMsg anID jsonParams =
   case Mp.lookup anID execCtxt.resolvedApp.functions of
     Nothing -> do
@@ -35,14 +35,14 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
       putStrLn $ "@[routeRequest] templatePath: " <> templatePath
       response <- liftIO $ Lbs.readFile (refEnv.runOpts.zb.zbRootPath </> templatePath)
       -- putStrLn $ "@[receiveStream] sending " <> show (Bs.length response) <> " bytes."
-      pure . Right $ response
+      pure . Right $ BasicFR response
     Just (FunctionRL fetchFunc) -> do
       putStrLn $ "@[routeRequest] function: " <> T.unpack anID
       -- The 'fmap fromStrict' creates the monadic converter, and the '<$>' applies it
       -- into the IO instance.
       case fetchFunc of
         Internal fct ->
-          fmap Lbs.fromStrict <$> fct refEnv.runOpts refEnv.pgPool (jsonParams, hxMsg.content)
+          fct refEnv.runOpts refEnv.pgPool (jsonParams, hxMsg.content)
         External (libPath, moduleName,fctName) -> do
           rezA <- try $ Jss.runElmFunction execCtxt.jsSession execCtxt.jsModule moduleName fctName jsonParams
           case rezA of
@@ -53,6 +53,6 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
               putStrLn "@[routeRequest] Jss.runElmFunction finished."
               case jsReturn.result of
                 "ok" ->
-                  pure . Right $ Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content
+                  pure . Right $ BasicFR $ Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content
                 "err" ->
                   pure . Left $ "ERROR: " <> T.unpack jsReturn.content

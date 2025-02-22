@@ -47,7 +47,7 @@ import Wapp.WsRouter (routeRequest)
 import Wapp.Types (RoutingTable, RouteArg (..), ResolvedApp (..)
           , WsSession (..), User (..), UserProfile (..), ExecContext (..)
           , ExecResult (..), Message (..), Status (..), ReferenceEnv (..), AppContext
-          , PairReference (..))
+          , PairReference (..), FunctionReply (..))
 
 
 wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
@@ -197,11 +197,16 @@ wsStreamInit sid conn = do
                             liftIO $ do
                               P.putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
                               WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8 . T.pack) errMsg <> "</div>" :: Bs.ByteString)
-                          Right aHtml ->
+                          Right aReply ->
                             let
-                              response = case hxMsg.headers.target of
-                                Just aValue -> "<div id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\">" <> aHtml <> "</div>"
-                                Nothing -> aHtml
+                              target = case hxMsg.headers.target of
+                                Just aValue -> "id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\""
+                                Nothing -> ""
+                              (modifiers, body) = case aReply of
+                                BasicFR aHtml -> ("", aHtml)
+                                AppendChildFR aHtml -> ("hx-swap-oob=\"beforeend\"", aHtml)
+                                AfterEndFR aHtml -> ("hx-swap-oob=\"afterend\"", aHtml)
+                              response = "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
                             in
                             liftIO $ WS.sendTextData conn response
               Just aText ->
