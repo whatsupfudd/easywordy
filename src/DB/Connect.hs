@@ -80,4 +80,6 @@ startMql dbC =
         }
   in do
   liftIO . putStrLn $ "@[startMql] user: " <> show dbC.userMq <> " db: " <> show dbC.dbaseMq <> "."
-  ContT $ bracket (Msql.connect dbSettings) Msql.close
+  rezA <- ContT $ bracket (Msql.connect dbSettings) Msql.close
+  liftIO . putStrLn $ "@[startMql] done."
+  pure rezA

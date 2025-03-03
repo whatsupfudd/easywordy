@@ -11,6 +11,7 @@ import Control.Monad.Except ( ExceptT, MonadError (throwError) )
 import Data.Functor.Identity ( Identity (..) )
 
 import Data.Foldable (for_)
+import Data.Either (lefts)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
@@ -22,9 +23,11 @@ import qualified System.Directory as Sdir
 import qualified HttpSup.CorsPolicy as Hcrs
 
 import qualified Options.Cli as Cl (CliOptions (..), EnvOptions (..))
-import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..), WpOptions (..), ZbOptions (..), OpenAiOptions (..))
+import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..)
+                  , WpOptions (..), ZbOptions (..), OpenAiOptions (..), WappOptions (..), TavusOptions (..))
 import qualified Options.Runtime as Rt (RunOptions (..), defaultRun, WpConfig (..), defaultWpConf, PgDbConfig (..), defaultPgDbConf
-              , MqlDbConfig (..), defaultMqlDbConf, ZbConfig (..), defaultZbConf, OpenAiConfig (..), defaultOpenAiConf)
+                , MqlDbConfig (..), defaultMqlDbConf, ZbConfig (..), defaultZbConf, OpenAiConfig (..), defaultOpenAiConf
+                , WappConfig (..), defaultWappConf, TavusConfig (..), defaultTavusConf)
 
 
 type ConfError = Either String ()
@@ -35,6 +38,9 @@ type WpOptIOSt = StateT Rt.WpConfig (StateT Rt.RunOptions IO) ConfError
 type MqlDbOptIOSt = StateT Rt.MqlDbConfig (StateT Rt.WpConfig (StateT Rt.RunOptions IO)) ConfError
 type ZbOptIOSt = StateT Rt.ZbConfig (StateT Rt.RunOptions IO) ConfError
 type OpenAiOptIOSt = StateT Rt.OpenAiConfig (StateT Rt.RunOptions IO) ConfError
+type WappOptIOSt = StateT Rt.WappConfig (StateT Rt.RunOptions IO) ConfError
+type TavusOptIOSt = StateT Rt.TavusConfig (StateT Rt.RunOptions IO) ConfError
+
 
 mconf :: MonadState s m => Maybe t -> (t -> s -> s) -> m ()
 mconf mbOpt setter =
@@ -42,15 +48,18 @@ mconf mbOpt setter =
     Nothing -> pure ()
     Just opt -> modify $ setter opt
 
-innerConf :: MonadState s f => (t1 -> s -> s) -> (t2 -> StateT t1 f (Either a b)) -> t1 -> Maybe t2 -> f ()
+
+innerConf :: MonadState s f => (t1 -> s -> s) -> (t2 -> StateT t1 f (Either String b)) -> t1 -> Maybe t2 -> f ConfError
 innerConf updState innerParser defaultVal mbOpt =
   case mbOpt of
-    Nothing -> pure ()
+    Nothing -> pure $ Right ()
     Just anOpt -> do
       (result, updConf) <- runStateT (innerParser anOpt) defaultVal
       case result of
-        Left errMsg -> pure ()
-        Right _ -> modify $ updState updConf
+        Left errMsg -> pure $ Left errMsg
+        Right _ -> do
+          modify $ updState updConf
+          pure $ Right ()
 
 
 mergeOptions :: Cl.CliOptions -> Fo.FileOptions -> Cl.EnvOptions -> IO Rt.RunOptions
@@ -59,26 +68,36 @@ mergeOptions cli file env = do
     Nothing -> do
       eiHomeDir <- Cexc.try Sdir.getHomeDirectory :: IO (Either Serr.IOError FilePath)
       case eiHomeDir of
+        Left err -> pure "/tmp"
+        Right aVal -> pure $ aVal <> "/EasyWordy"
+    Just aVal -> pure aVal
+  appConfig <- case env.appConfig of
+    Nothing -> do
+      eiConfigDir <- Cexc.try Sdir.getHomeDirectory :: IO (Either Serr.IOError FilePath)
+      case eiConfigDir of
         Left err -> pure ".fudd/easywordy"
         Right aVal -> pure $ aVal <> "/.fudd/easywordy"
     Just aVal -> pure aVal
-  (result, runtimeOpts) <- runStateT (parseOptions cli file) (Rt.defaultRun appHome "http://localhost" 8885)
+  -- putStrLn $ "@[mergeOptions] file: " <> show file
+  (result, runtimeOpts) <- runStateT (parseOptions cli file appHome) (Rt.defaultRun appHome appConfig "http://localhost" 8885)
   case result of
     Left errMsg -> error errMsg
     Right _ -> pure runtimeOpts
 
   where
-  parseOptions :: Cl.CliOptions -> Fo.FileOptions -> RunOptIOSt
-  parseOptions cli file = do
+  parseOptions :: Cl.CliOptions -> Fo.FileOptions -> FilePath -> RunOptIOSt
+  parseOptions cli file appHome = do
     mconf cli.debug $ \nVal s -> s { Rt.debug = nVal }
     for_ file.server parseServer
     innerConf (\nVal s -> s { Rt.pgDbConf = nVal }) parsePgDb Rt.defaultPgDbConf file.db
     for_ file.jwt parseJWT
     for_ file.cors parseCors
-    innerConf (\nVal s -> s { Rt.wp = nVal }) parseWp Rt.defaultWpConf file.wordpress
-    innerConf (\nVal s -> s { Rt.zb = nVal }) parseZb Rt.defaultZbConf file.zhbzns
+    innerConf (\nVal s -> s { Rt.wp = nVal }) parseWp (Rt.defaultWpConf appHome) file.wordpress
+    innerConf (\nVal s -> s { Rt.zb = nVal }) parseZb (Rt.defaultZbConf appHome) file.zhopness
+    innerConf (\nVal s -> s { Rt.wapp = nVal }) parseWapp (Rt.defaultWappConf appHome) file.wapp
     innerConf (\nVal s -> s { Rt.openai = nVal }) parseOpenAi Rt.defaultOpenAiConf file.openai
-    pure $ Right ()
+    innerConf (\nVal s -> s { Rt.tavus = nVal }) parseTavus Rt.defaultTavusConf file.tavus
+    -- pure $ Right ()
 
 
   parsePgDb :: Fo.PgDbOpts -> PgDbOptIOSt
@@ -93,15 +112,24 @@ mergeOptions cli file env = do
 
   parseWp :: Fo.WpOptions -> WpOptIOSt
   parseWp wpO = do
-    mconf wpO.rootPath $ \nVal s -> s { Rt.rootPath = nVal }
+    resolveValue wpO.rootPath $ \nVal s -> s { Rt.rootPath = nVal }
     innerConf (\nVal s -> s { Rt.mqlDbConf = nVal }) parseMqlDb Rt.defaultMqlDbConf wpO.db
     pure $ Right ()
 
 
   parseZb :: Fo.ZbOptions -> ZbOptIOSt
   parseZb zbO = do
-    mconf zbO.zbRootPath $ \nVal s -> s { Rt.zbRootPath = nVal }
-    pure $ Right ()
+    resolveValue zbO.zbRoot $ \nVal s -> s { Rt.zbRootPath = nVal }
+  
+
+  parseWapp :: Fo.WappOptions -> WappOptIOSt
+  parseWapp wappO = do
+    rezA <- resolveValue wappO.waDef $ \nVal s -> s { Rt.waDefDir = nVal }
+    rezB <- resolveValue wappO.waContent $ \nVal s -> s { Rt.waContentDir = nVal }
+    pure $ case lefts [rezA, rezB] of
+      [] -> Right ()
+      errs -> Left $ unlines errs
+
 
   parseOpenAi :: Fo.OpenAiOptions -> OpenAiOptIOSt
   parseOpenAi openAiO = do
@@ -126,6 +154,7 @@ mergeOptions cli file env = do
     mconf so.host $ \nVal s -> s { Rt.serverHost = nVal }
     pure $ Right ()
 
+
   parseJWT :: Fo.JwtOpts -> RunOptIOSt
   parseJWT jo = do
     case jo.jEnabled of
@@ -133,16 +162,7 @@ mergeOptions cli file env = do
         modify $ \s -> s { Rt.jwkConfFile = Nothing }
         pure $ Right ()
       _ ->
-        case jo.keyFile of
-          Nothing -> pure $ Right ()
-          Just aPath -> do
-            mbJwkPath <- liftIO $ resolveEnvValue aPath
-            case mbJwkPath of
-              Nothing ->
-                pure . Left $ "Could not resolve JWK file path: " <> aPath
-              Just aPath -> do
-                modify $ \s -> s { Rt.jwkConfFile = Just aPath }
-                pure $ Right ()
+        resolveValue jo.keyFile $ \nVal s -> s { Rt.jwkConfFile = Just nVal }
 
 
   parseCors :: Fo.CorsOpts -> RunOptIOSt
@@ -155,12 +175,11 @@ mergeOptions cli file env = do
     pure $ Right ()
 
 
- {-
-    cliO = case cli.debug of
-      Nothing -> fileO
-      Just aVal -> fileO { debug = aVal } :: RunOptions
-    -- TODO: update from ENV options
- -}
+  parseTavus :: Fo.TavusOptions -> TavusOptIOSt
+  parseTavus tavusO = do
+    mconf tavusO.apiKey $ \nVal s -> s { Rt.apiKeyTavus = nVal }
+    pure $ Right ()
+
 
 -- | resolveEnvValue resolves an environment variable value.
 resolveEnvValue :: FilePath -> IO (Maybe FilePath)
@@ -175,3 +194,16 @@ resolveEnvValue aVal =
           Nothing -> pure Nothing
           Just aVal -> pure . Just $ aVal <> leftOver
       _ -> pure $ Just aVal
+
+
+resolveValue :: (MonadIO f, MonadState s f) => Maybe String -> (String -> s -> s) -> f ConfError
+resolveValue aVal setter = do
+  case aVal of
+      Nothing -> pure $ Right ()
+      Just aVal -> do
+        mbRezVal <- liftIO $ resolveEnvValue aVal
+        case mbRezVal of
+          Nothing -> pure . Left $ "Could not resolve value: " <> aVal
+          Just aVal -> do
+            modify $ setter aVal
+            pure $ Right ()

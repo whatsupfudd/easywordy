@@ -20,10 +20,9 @@ import Options.Runtime as Rto
 
 serverCmd :: Rto.RunOptions -> IO ()
 serverCmd rtOpts = do
-  putStrLn $ "@[serverHu] starting, opts: " <> show rtOpts
-  putStrLn "tests done."
+  putStrLn $ "@[serverCmd] starting, wapp: " <> show rtOpts.wapp <> "\n  zhopness: " <> show rtOpts.zb
   sapiModuleDef <- defineSapiModuleStruct
-  eiRouteDict <- loadAppDefs rtOpts.appDefs
+  eiRouteDict <- loadAppDefs rtOpts.wapp
   case eiRouteDict of
     Left errMsg -> do
       putStrLn $ "@[serverCmd] error loading app defs: " <> errMsg
@@ -34,14 +33,17 @@ serverCmd rtOpts = do
         pgPool = startPg rtOpts.pgDbConf
         contArgs = (,,,) <$> pgPool <*> mqlConn <*> pure sapiModuleDef <*> pure routeDict
       in do
-      runContT contArgs mainAction
+        putStrLn $ "@[serverCmd] going to start mainAction."
+        runContT contArgs mainAction
   where
   mainAction (pgPool, mqlConn, sapiModuleDef, routeDict) = do
+    putStrLn $ "@[mainAction] starting."
     let 
       settings = setupWai rtOpts.serverPort rtOpts.serverHost (globalShutdownHandler sapiModuleDef)
     webHandler <- launchServant rtOpts pgPool mqlConn sapiModuleDef routeDict
+    putStrLn $ "@[mainAction] webHandler started."
     Wrp.runSettings settings webHandler
-    putStrLn $ "@[serverHu] ending."
+    putStrLn $ "@[serverCmd] ending."
     pure ()
   globalShutdownHandler sapiModuleDef = do
     endPhp sapiModuleDef

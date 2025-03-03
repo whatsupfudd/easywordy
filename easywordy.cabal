@@ -29,6 +29,7 @@ library
       Api.Session
       Api.Types
       Chat.Logic
+      Chat.Video
       Commands
       Commands.Help
       Commands.Server

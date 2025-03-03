@@ -3,6 +3,8 @@ module Options.Runtime (
   , WpConfig (..), defaultWpConf
   , ZbConfig (..), defaultZbConf
   , OpenAiConfig (..), defaultOpenAiConf
+  , WappConfig (..), defaultWappConf
+  , TavusConfig (..), defaultTavusConf
   , module DB.Connect
 
 ) where
@@ -16,9 +18,9 @@ import DB.Connect (PgDbConfig (..), defaultPgDbConf, MqlDbConfig (..), defaultMq
 
 
 -- TODO: create a proper Wordpress configuration set:
-defaultWpConf :: WpConfig
-defaultWpConf = WpConfig {
-  rootPath = "../Lib/wordpress"
+defaultWpConf :: FilePath -> WpConfig
+defaultWpConf homeDir = WpConfig {
+  rootPath = homeDir <> "/Wordpress"
   , mqlDbConf = defaultMqlDbConf
 }
 
@@ -30,7 +32,7 @@ data WpConfig = WpConfig {
   deriving (Show)
 
 
-data ZbConfig = ZbConfig {
+newtype ZbConfig = ZbConfig {
   zbRootPath :: FilePath
   }
   deriving (Show)
@@ -42,9 +44,9 @@ data OpenAiConfig = OpenAiConfig {
   deriving (Show)
 
 
-defaultZbConf :: ZbConfig
-defaultZbConf = ZbConfig {
-  zbRootPath = "../Lib/ZhopNess/wapp"
+defaultZbConf :: FilePath -> ZbConfig
+defaultZbConf homeDir = ZbConfig {
+  zbRootPath = homeDir <> "/ZhopNess"
   }
 
 
@@ -54,8 +56,29 @@ defaultOpenAiConf = OpenAiConfig {
   , model = Nothing
   }
 
-defaultAppDefs :: FilePath
-defaultAppDefs = "../Lib/Wapp"
+
+data WappConfig = WappConfig {
+  waDefDir :: FilePath
+  , waContentDir :: FilePath
+  }
+  deriving (Show)
+
+
+defaultWappConf :: FilePath -> WappConfig
+defaultWappConf homeDir = WappConfig {
+  waDefDir = homeDir <> "/Wapp/Defs"
+  , waContentDir = homeDir <> "/Wapp/content"
+  }
+
+newtype TavusConfig = TavusConfig {
+  apiKeyTavus :: Text
+  }
+  deriving (Show)
+
+defaultTavusConf :: TavusConfig
+defaultTavusConf = TavusConfig {
+  apiKeyTavus = "1234567890"
+  }
 
 data RunOptions = RunOptions {
     debug :: Int
@@ -66,23 +89,25 @@ data RunOptions = RunOptions {
     , pgDbConf :: PgDbConfig
     , wp :: WpConfig
     , zb :: ZbConfig
-    , appDefs :: FilePath
+    , wapp :: WappConfig
     , openai :: OpenAiConfig
+    , tavus :: TavusConfig
   }
   deriving (Show)
 
 
-defaultRun :: FilePath -> Text -> Int -> RunOptions
-defaultRun homeDir server port =
+defaultRun :: FilePath -> FilePath -> Text -> Int -> RunOptions
+defaultRun homeDir homeConfig server port =
   RunOptions {
     debug = 0
     , corsPolicy = Just defaultCorsPolicy
-    , jwkConfFile = Just (homeDir <> "/jwkConf.json")
+    , jwkConfFile = Just (homeConfig <> "/jwkConf.json")
     , serverHost = server
     , serverPort = port
     , pgDbConf = defaultPgDbConf
-    , wp = defaultWpConf
-    , zb = defaultZbConf
-    , appDefs = defaultAppDefs
+    , wp = defaultWpConf homeDir
+    , zb = defaultZbConf homeDir
+    , wapp = defaultWappConf homeDir
     , openai = defaultOpenAiConf
+    , tavus = defaultTavusConf
   }

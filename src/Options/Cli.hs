@@ -6,8 +6,9 @@ import Data.Text (Text)
 import Options.Applicative
 
 
-newtype EnvOptions = EnvOptions {
+data EnvOptions = EnvOptions {
     appHome :: Maybe FilePath
+    , appConfig :: Maybe FilePath
   }
 
 data CliOptions = CliOptions {
@@ -74,10 +75,10 @@ globConfFileDef =
     strOption (
       long "config"
       <> short 'c'
-      <> metavar "easyverseCONF"
+      <> metavar "EASYWORDY_CONFIG"
       <> value ""
       <> showDefault
-      <> help "Global config file (default is ~/.config/easyverse.yaml)."
+      <> help "Global config file (default is ~/.config/easywordy/config.yaml)."
     )
     <*>
     strOption (

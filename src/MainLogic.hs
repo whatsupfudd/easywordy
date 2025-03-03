@@ -19,11 +19,12 @@ runWithOptions cliOptions fileOptions = do
       putStrLn "@[runWithOptions] start on nil command."
     Just aJob -> do
       -- Get environmental context in case it's required in the merge. Done here to keep the merge pure:
-      mbHome <- Env.lookupEnv "easyverseHOME"
+      mbHome <- Env.lookupEnv "EASYWORDY"
+      mbConfig <- Env.lookupEnv "EASYWORDY_CONFIG"
       let
         envOptions = Opt.EnvOptions {
             appHome = mbHome
-            -- TODO: put additional env vars.
+            , appConfig = mbConfig
           }
         cmdExecutor =
           case aJob of

@@ -63,14 +63,27 @@ data WpOptions = WpOptions {
   }
   deriving stock (Show, Generic)
 
-data ZbOptions = ZbOptions {
-  zbRootPath :: Maybe FilePath
+newtype ZbOptions = ZbOptions {
+    zbRoot :: Maybe FilePath
   }
   deriving stock (Show, Generic)
+
+data WappOptions = WappOptions {
+  waDef :: Maybe FilePath
+  , waContent :: Maybe FilePath
+  }
+  deriving stock (Show, Generic)
+
 
 data OpenAiOptions = OpenAiOptions {
   apiKey :: Maybe Text
   , model :: Maybe Text
+  }
+  deriving stock (Show, Generic)
+
+
+newtype TavusOptions = TavusOptions {
+  apiKey :: Maybe Text
   }
   deriving stock (Show, Generic)
 
@@ -83,13 +96,15 @@ data FileOptions = FileOptions {
   , jwt :: Maybe JwtOpts
   , cors :: Maybe CorsOpts
   , wordpress :: Maybe WpOptions
-  , zhbzns :: Maybe ZbOptions
+  , zhopness :: Maybe ZbOptions
+  , wapp :: Maybe WappOptions
   , openai :: Maybe OpenAiOptions
+  , tavus :: Maybe TavusOptions
  }
  deriving stock (Show, Generic)
 
 defaultConfName :: FilePath
-defaultConfName = ".fudd/easyverse/config.yaml"
+defaultConfName = ".fudd/easywordy/config.yaml"
 
 
 defaultConfigFilePath :: IO (Either String FilePath)
@@ -110,6 +125,9 @@ instance Aes.FromJSON CorsOpts
 instance Aes.FromJSON WpOptions
 instance Aes.FromJSON ZbOptions
 instance Aes.FromJSON OpenAiOptions
+instance Aes.FromJSON WappOptions
+instance Aes.FromJSON TavusOptions
+
 
 parseFileOptions :: FilePath -> IO (Either String FileOptions)
 parseFileOptions filePath =
@@ -117,22 +135,11 @@ parseFileOptions filePath =
     fileExt = Spsx.takeExtension filePath
   in case fileExt of
     ".yaml" -> do
+      -- putStrLn $ "@[parseFileOptions] filePath: " <> filePath
       eiRez <- Yaml.decodeFileEither filePath
+      -- putStrLn $ "@[parseFileOptions] eiRez: " <> show eiRez
       case eiRez of
         Left err -> pure . Left $ "@[parseYaml] err: " <> show err
         Right aContent ->
-          {- HERE: add new parameters processing:
-          Eg:
-          case aContent.rootDir of
-            Nothing -> pure $ Right aContent
-            Just aVal -> case head aVal of
-                '$' -> do
-                  eiEnvValue <- Cexc.try $ Senv.getEnv (tail aVal) :: IO (Either Serr.IOError String)
-                  case eiEnvValue of
-                    Left err -> pure . Right $ aContent { rootDir = Nothing }
-                    Right aVal -> pure . Right $ aContent { rootDir = Just aVal }
-                _ -> pure . Right $ aContent { rootDir = Just aVal }
-          -}
-          -- HERE: modify based on new parameters processing:
           pure $ Right aContent
     _ -> pure . Left $ "@[parseFileOptions] unknown conf-file extension: " <> fileExt

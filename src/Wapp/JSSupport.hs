@@ -21,7 +21,7 @@ import Data.Aeson ( FromJSON, Value, toJSON, encode )
 import Language.JavaScript.Inline
 import Language.JavaScript.Inline.Core
 
-
+import Wapp.Types (JSExecSupport(..))
 data JSReturn = JSReturn {
     result :: Text
     , content :: Text
@@ -89,15 +89,16 @@ endJS :: Session -> IO ()
 endJS session = do
   closeSession session
 
-runElmFunction :: Session -> JSVal -> Text -> Text -> Value -> IO JSReturn
-runElmFunction session elmModule moduleName functionName jsonParams = do
+runElmFunction :: JSExecSupport -> Text -> Text -> Value -> IO JSReturn
+runElmFunction jsSupport moduleName functionName jsonParams = do
   putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName <> ", functionName: " <> unpack functionName
   let
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
     jsonParamsLBS = encode jsonParams
-  rezA <- eval session [js|
-      const app = ($elmModule.default)['Elm'][$mNameLBS].init({ "flags": { "locale" : "en" } })
+    jsElmModule = jsSupport.jsModule
+  rezA <- eval jsSupport.jsSession [js|
+      const app = ($jsElmModule.default)['Elm'][$mNameLBS].init({ "flags": { "locale" : "en" } })
   
       let resolvePromise
       let innerVal = new Promise((resolve) => {

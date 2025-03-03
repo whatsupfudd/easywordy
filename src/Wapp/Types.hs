@@ -51,7 +51,11 @@ data ExecContext = ExecContext {
   , resolvedApp :: ResolvedApp
   , heap :: Mp.Map Text Text
   , status :: Status
-  , jsSession :: Js.Session
+  , jsSupport :: Maybe JSExecSupport
+  }
+
+data JSExecSupport = JSExecSupport {
+    jsSession :: Js.Session
   , jsModule :: Js.JSVal
   }
 
@@ -152,6 +156,7 @@ instance FromJSON PairReference where
       (label, value) = head $ Ak.toList o
       ident = case value of
         String s -> s
+        Null -> ""
         _ -> "[PairReference.parseJSON] Invalid fct value: " <> (pack . show) value
     in
       pure (PairReference (pack . Ak.toString $ label) ident)

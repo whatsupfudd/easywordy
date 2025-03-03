@@ -20,7 +20,7 @@ main = do
     Right cliOptions -> do
       mbFileOptions <- case cliOptions.configFile of
           Nothing -> do
-            eiEnvConfFile <- Cexc.try $ Senv.getEnv "easyverseCONF" :: IO (Either Serr.IOError String)
+            eiEnvConfFile <- Cexc.try $ Senv.getEnv "EASYWORDY_CONFIG" :: IO (Either Serr.IOError String)
             case eiEnvConfFile of
               Left _ -> do
                 eiConfPath <- Opt.defaultConfigFilePath

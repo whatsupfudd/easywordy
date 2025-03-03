@@ -53,8 +53,10 @@ type MainApi = ToServantApi TopRoutes
 -- serveApi ::  Rt.RunOptions -> Pool -> IO Application
 launchServant ::  Rt.RunOptions -> Pool -> MySQLConn -> Ptr () -> RoutingDictionary -> IO Application
 launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs = do
+  putStrLn $ "@[launchServant] starting, confFile: " <> show rtOpts.jwkConfFile <> "."
   -- TODO: figure out how to turn off JWT authentication.
   jwtKey <- maybe tmpJWK readJWK rtOpts.jwkConfFile
+  putStrLn "@[serveApi] got jwt keys."
 
   let
     linkUp :: NonEmpty (a -> a) -> a -> a
@@ -84,7 +86,6 @@ launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs = do
             , sapiModuleDef_Ctxt = sapiModuleDef, routeDict_Ctxt = appDefs }
     server = hoistServerWithContext serverApiProxy apiContextP (apiAsHandler appEnv) serverApiT
 
-  putStrLn "@[serveApi] got jwt keys."
   putStrLn $ "@[serveApi] listening on port " <> show rtOpts.serverPort <> "."
   beginPhp sapiModuleDef
   pure $ middlewares $ serveWithContext serverApiProxy apiContext server

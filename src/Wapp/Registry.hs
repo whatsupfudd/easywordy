@@ -11,26 +11,29 @@ import qualified System.Directory as Sd
 import qualified System.Environment as Se
 import qualified System.FilePath.Posix as Spx
 import qualified System.IO.Error as Er
+import System.FilePath.Posix ((</>))
 
 import qualified Data.Yaml as Y
 
 import qualified Options.Runtime as Rt
 import WordPress.Functions (fetchVersions, fetchFolders, fetchFiles, fetchFileDetails)
 import Chat.Logic (receiveMsg)
+import Chat.Video (startSession)
+
 import Wapp.Types
 import Data.Char (isLetter)
 
 
-loadAppDefs :: FilePath -> IO (Either String RoutingDictionary)
-loadAppDefs aDir = do
+loadAppDefs :: Rt.WappConfig -> IO (Either String RoutingDictionary)
+loadAppDefs wappConf = do
   let
     fctResolver = defaultFctResolver
-  appDefs <- Sd.listDirectory aDir
+  appDefs <- Sd.listDirectory wappConf.waDefDir
   let
     validFiles = filter (\filePath -> Spx.takeExtension filePath == ".yaml" && isLetter (head filePath)) appDefs
   rezA <- forM validFiles $ \filePath ->
     let
-      appDefFile = Spx.joinPath [aDir, filePath]
+      appDefFile = Spx.joinPath [wappConf.waDefDir, filePath]
     in do
     rezC <- Y.decodeFileEither appDefFile :: IO (Either Y.ParseException AppDef)
     case rezC of
@@ -41,7 +44,7 @@ loadAppDefs aDir = do
   case lefts rezA of
     [] -> do
       rezB <- forM (rights rezA) $ \appDef ->
-        resolveAppDef fctResolver appDef
+        resolveAppDef wappConf fctResolver appDef
       case lefts rezB of
         [] ->
           pure . Right $ Mp.fromList $ map (\app -> (app.aid, app)) (rights rezB)
@@ -99,6 +102,8 @@ functionResolver libs fctDef =
             eiInternalFct = case pairRef.ident of
               "receiveMsg" ->
                 Right $ FunctionRL $ Internal receiveMsg
+              "startVideoSession" ->
+                Right $ FunctionRL $ Internal startSession
               _ ->
                 Left $ "Unknown function: " <> unpack pairRef.ident
           in
@@ -115,8 +120,8 @@ functionResolver libs fctDef =
               Left $ "Unknown library: " <> unpack aName
 
 
-resolveAppDef :: FctResolver -> AppDef -> IO (Either String ResolvedApp)
-resolveAppDef fctResolver appDef =
+resolveAppDef :: Rt.WappConfig -> FctResolver -> AppDef -> IO (Either String ResolvedApp)
+resolveAppDef wappConf fctResolver appDef =
   let
     eiLibs = map fctResolver.resolveLib appDef.libs
   in
@@ -133,7 +138,7 @@ resolveAppDef fctResolver appDef =
               aid = appDef.uid
               , label = appDef.label
               , locales = appDef.locales
-              , rootPath = appDef.rootPath
+              , rootPath = wappConf.waContentDir </> appDef.rootPath
               , libs = libRefs
               , functions = Mp.fromList (rights eiFcts)
             }
@@ -143,7 +148,7 @@ resolveAppDef fctResolver appDef =
       Left $ "Error resolving libs: " <> intercalate "\n" libErrs
       
 
-
+{- Hardcoded values before app definitions were read from .yaml files:
 findRoutingForApp :: Rt.RunOptions -> Text -> Maybe RoutingTable
 findRoutingForApp rtOpts anID =
   case anID of
@@ -214,4 +219,4 @@ fakeZ14LInit rtOpts =
       , ("stream_1", ExecFileRL "z14l/stream_1.html" [])
       , ("stream_2", ExecFileRL "z14l/stream_2.html" [])
   ]
-
+-}

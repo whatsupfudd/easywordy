@@ -47,7 +47,7 @@ import Wapp.WsRouter (routeRequest)
 import Wapp.Types (RoutingTable, RouteArg (..), ResolvedApp (..)
           , WsSession (..), User (..), UserProfile (..), ExecContext (..)
           , ExecResult (..), Message (..), Status (..), ReferenceEnv (..), AppContext
-          , PairReference (..), FunctionReply (..))
+          , PairReference (..), FunctionReply (..), JSExecSupport (..))
 
 
 wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
@@ -115,14 +115,20 @@ wsStreamInit sid conn = do
         (x:_) -> x
     fakeSessionID <- liftIO Uu.nextRandom
     fakeUserID <- liftIO Uu.nextRandom
-    (jsSession, jsModule) <- liftIO $ Jss.initJS (T.unpack firstLib.ident) firstLib.label
+    jsSupport <- case firstLib.ident of
+      "" -> pure Nothing
+      anIdent -> do
+        (jsSession, jsModule) <- liftIO $ Jss.initJS (resolvedApp.rootPath </> T.unpack anIdent) firstLib.label
+        pure $ Just $ JSExecSupport jsSession jsModule
     let
       refEnv = ReferenceEnv rtOpts pgDb Mp.empty
       session = fakeSession fakeSessionID fakeUserID
-      execCtx = ExecContext session resolvedApp Mp.empty RunningST jsSession jsModule
+      execCtx = ExecContext session resolvedApp Mp.empty RunningST jsSupport
     P.putStrLn $ "@[streamHandler] starting new session: " <> show fakeSessionID
     (result, finalCtxt, messageSet) <- Rws.runRWST socketLoop refEnv execCtx
-    Jss.endJS jsSession
+    case jsSupport of
+      Nothing -> pure ()
+      Just jsSupport -> Jss.endJS jsSupport.jsSession
     pure ()
 
   socketLoop :: AppContext ()
