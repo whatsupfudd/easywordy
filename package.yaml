@@ -107,6 +107,11 @@ dependencies:
   - http-conduit >= 2.3.8
   - http-client-tls >= 0.3.8
   - connection >= 0.3.2
+  # For STM:
+  - stm
+  # For file watching:
+  - fsnotify
+  - hfsevents >= 0.1.8
 
 
 default-extensions:

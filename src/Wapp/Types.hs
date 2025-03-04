@@ -4,6 +4,8 @@
 module Wapp.Types where
 
 import qualified Control.Monad.RWS.Lazy as Rws
+import qualified Control.Concurrent.STM as Cs
+import qualified Control.Concurrent.STM.TMVar as Ct
 
 import qualified Data.ByteString as Bs
 import qualified Data.ByteString.Lazy as Lbs
@@ -29,6 +31,7 @@ data ReferenceEnv = ReferenceEnv {
   runOpts :: Rt.RunOptions
   , pgPool :: Hp.Pool
   , params :: Mp.Map Text Text
+  , jsFileUpdate :: Cs.TVar FilePath
   }
 
 

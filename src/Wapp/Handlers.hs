@@ -4,6 +4,10 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (asks)
 import Control.Exception.Safe (tryAny)
 import Control.Monad (forever, void)
+import Control.Concurrent (forkIO, killThread, ThreadId, threadDelay)
+import qualified Control.Concurrent.STM as Cs
+import qualified Control.Concurrent.STM.TMVar as Ct
+
 import qualified Control.Monad.RWS as Rws
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Lazy.Char8 as Bs
@@ -17,6 +21,8 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.UUID as Uu
 import qualified Data.UUID.V4 as Uu
 import qualified Network.WebSockets as WS
+
+import System.FSNotify
 
 import qualified Data.Aeson as Ae
 import qualified Data.Aeson.KeyMap as Aek
@@ -40,7 +46,7 @@ import Wapp.RouteDef (WappRoutes (..))
 
 import qualified Demo.DemoPage as Dmo
 import qualified Wapp.Registry as Wr
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeDirectory)
 
 import qualified Wapp.JSSupport as Jss
 import Wapp.WsRouter (routeRequest)
@@ -115,13 +121,19 @@ wsStreamInit sid conn = do
         (x:_) -> x
     fakeSessionID <- liftIO Uu.nextRandom
     fakeUserID <- liftIO Uu.nextRandom
+    let
+      jsFilePath = resolvedApp.rootPath
+    newFileUpdater <- liftIO $ Cs.newTVarIO ""
+    updateSignal <- Ct.newEmptyTMVarIO
+    watcherId <- forkIO $ setupFileWatcher jsFilePath newFileUpdater updateSignal
     jsSupport <- case firstLib.ident of
       "" -> pure Nothing
       anIdent -> do
-        (jsSession, jsModule) <- liftIO $ Jss.initJS (resolvedApp.rootPath </> T.unpack anIdent) firstLib.label
+        (jsSession, jsModule) <- do
+          liftIO $ Jss.initJS jsFilePath firstLib.label
         pure $ Just $ JSExecSupport jsSession jsModule
     let
-      refEnv = ReferenceEnv rtOpts pgDb Mp.empty
+      refEnv = ReferenceEnv rtOpts pgDb Mp.empty newFileUpdater
       session = fakeSession fakeSessionID fakeUserID
       execCtx = ExecContext session resolvedApp Mp.empty RunningST jsSupport
     P.putStrLn $ "@[streamHandler] starting new session: " <> show fakeSessionID
@@ -129,6 +141,7 @@ wsStreamInit sid conn = do
     case jsSupport of
       Nothing -> pure ()
       Just jsSupport -> Jss.endJS jsSupport.jsSession
+    killThread watcherId
     pure ()
 
   socketLoop :: AppContext ()
@@ -140,6 +153,31 @@ wsStreamInit sid conn = do
         liftIO closeConnection
       Right aVal -> do
         liftIO . P.putStrLn $ "@[streamHandler] client disconnected."
+
+
+  setupFileWatcher :: FilePath -> Cs.TVar FilePath -> Ct.TMVar () -> IO ()
+  setupFileWatcher filePath bytecodeRef updateSignal = do
+    manager <- startManager
+    -- Watch for modifications to the code file
+    _ <- watchDir manager (takeDirectory filePath) isTargetFile handleEvent
+    forever $ threadDelay 1000000
+    where
+      isTargetFile event = eventPath event == filePath
+      
+      handleEvent event = do
+        putStrLn $ "@[handleEvent] Detected change in code file: " ++ show event
+        -- Add a small delay to ensure the file is completely written
+        threadDelay 100000  -- 100ms
+        -- Update the shared TVar with new bytecode and increment version
+        Cs.atomically $ do
+          oldState <- Cs.readTVar bytecodeRef
+          Cs.writeTVar bytecodeRef filePath
+        
+        -- Signal all WebSocket handlers about the update
+        Cs.atomically $ Ct.putTMVar updateSignal ()
+        
+        putStrLn "@[handleEvent] updated successfully."
+
 
   fakeSession :: Uu.UUID -> Uu.UUID -> WsSession
   fakeSession fakeSessionID fakeUserID = WsSession {

@@ -90,10 +90,12 @@ library
     , directory
     , exceptions
     , filepath
+    , fsnotify
     , gitrev
     , hasql
     , hasql-pool
     , hasql-th
+    , hfsevents >=0.1.8
     , http-api-data
     , http-client >=0.7.17
     , http-client-tls >=0.3.8
@@ -124,6 +126,7 @@ library
     , servant-multipart
     , servant-server
     , servant-websockets
+    , stm
     , streaming-commons
     , text
     , time
@@ -167,10 +170,12 @@ executable easywordy
     , easywordy
     , exceptions
     , filepath
+    , fsnotify
     , gitrev
     , hasql
     , hasql-pool
     , hasql-th
+    , hfsevents >=0.1.8
     , http-api-data
     , http-client >=0.7.17
     , http-client-tls >=0.3.8
@@ -201,6 +206,7 @@ executable easywordy
     , servant-multipart
     , servant-server
     , servant-websockets
+    , stm
     , streaming-commons
     , text
     , time
@@ -245,10 +251,12 @@ test-suite easywordy-test
     , easywordy
     , exceptions
     , filepath
+    , fsnotify
     , gitrev
     , hasql
     , hasql-pool
     , hasql-th
+    , hfsevents >=0.1.8
     , http-api-data
     , http-client >=0.7.17
     , http-client-tls >=0.3.8
@@ -279,6 +287,7 @@ test-suite easywordy-test
     , servant-multipart
     , servant-server
     , servant-websockets
+    , stm
     , streaming-commons
     , text
     , time
