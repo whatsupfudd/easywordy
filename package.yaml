@@ -111,7 +111,6 @@ dependencies:
   - stm
   # For file watching:
   - fsnotify
-  - hfsevents >= 0.1.8
 
 
 default-extensions:

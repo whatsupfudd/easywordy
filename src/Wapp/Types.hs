@@ -32,6 +32,7 @@ data ReferenceEnv = ReferenceEnv {
   , pgPool :: Hp.Pool
   , params :: Mp.Map Text Text
   , jsFileUpdate :: Cs.TVar FilePath
+  , srvUpdate :: Ct.TMVar ()
   }
 
 

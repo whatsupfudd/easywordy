@@ -52,6 +52,7 @@ library
       Routing.TopDef
       Routing.TopHandlers
       ServeApi
+      Wapp.FileWatcher
       Wapp.Handlers
       Wapp.HtmxSupport
       Wapp.JSSupport
@@ -95,7 +96,6 @@ library
     , hasql
     , hasql-pool
     , hasql-th
-    , hfsevents >=0.1.8
     , http-api-data
     , http-client >=0.7.17
     , http-client-tls >=0.3.8
@@ -175,7 +175,6 @@ executable easywordy
     , hasql
     , hasql-pool
     , hasql-th
-    , hfsevents >=0.1.8
     , http-api-data
     , http-client >=0.7.17
     , http-client-tls >=0.3.8
@@ -256,7 +255,6 @@ test-suite easywordy-test
     , hasql
     , hasql-pool
     , hasql-th
-    , hfsevents >=0.1.8
     , http-api-data
     , http-client >=0.7.17
     , http-client-tls >=0.3.8

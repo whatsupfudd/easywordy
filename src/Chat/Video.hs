@@ -173,11 +173,11 @@ fetchConvURL rtOpts =
            <> "Contrary to progressive education where students have a personalized and asynchronous learning experience, "
            <> "conventional education is a one-size-fits-all approach where students are expected to be present in a classroom at a specific time and date. "
            <> "This has been shown to be ineffective and even harmful to students' mental health. We investigate all aspects of these issues."
-        , customGreeting = "Hi, I'm the digital twin in Z1, she's busy today so I take over!"
+        , customGreeting = "Hi, I'm the digital twin in Z1, I am available when a real person isn't!"
         , properties = TavusProperties {
-            maxCallDuration = 60
-            , participantLeftTimeout = 60
-            , participantAbsentTimeout = 60
+            maxCallDuration = 300
+            , participantLeftTimeout = 30
+            , participantAbsentTimeout = 30
             -- , enableRecording = True
             -- , enableTranscription = True
             , applyGreenscreen = False
