@@ -52,12 +52,15 @@ library
       Routing.TopDef
       Routing.TopHandlers
       ServeApi
+      Wapp.AppDef
       Wapp.FileWatcher
       Wapp.Handlers
       Wapp.HtmxSupport
+      Wapp.InternalLib
       Wapp.JSSupport
       Wapp.Registry
       Wapp.RouteDef
+      Wapp.State
       Wapp.Types
       Wapp.WsRouter
       WordPress.Functions

@@ -29,8 +29,7 @@ import Action (Action(..))
 import Actions.Chat (CompleteParams(..), ChatVerb(..))
 
 import qualified Options.Runtime as Rt
-import qualified Wapp.Types as Wt
-
+import qualified Wapp.AppDef as Wd
 
 data UserProfile = UserProfile {
   avatar :: Text
@@ -52,11 +51,11 @@ data ChatMessageContent = ChatMessageContent {
   }
 
 
-receiveMsg :: Wt.InternalFunction
+receiveMsg :: Wd.InternalFunction
 receiveMsg rtOpts pgDb (jsonParams, content) = do
   case rtOpts.openai.apiKey of
     Nothing ->
-      pure . Right . Wt.AppendChildFR $ renderHtml $
+      pure . Right . Wd.AppendChildFR $ renderHtml $
         H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
           H.toHtml ("No OPENAI api key" :: Text)
     Just aKey ->
@@ -66,7 +65,7 @@ receiveMsg rtOpts pgDb (jsonParams, content) = do
       -}
       case content of
         Nothing ->
-          pure . Right . Wt.AppendChildFR $ renderHtml $
+          pure . Right . Wd.AppendChildFR $ renderHtml $
             H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
               H.toHtml ("Need some content to send to AI" :: Text)
         Just aText ->
@@ -83,12 +82,12 @@ receiveMsg rtOpts pgDb (jsonParams, content) = do
           case rezA of
             Left errMsg -> do
               putStrLn $ "@[receiveMsg] err: " <> show errMsg
-              pure . Right . Wt.AppendChildFR $ renderHtml $
+              pure . Right . Wd.AppendChildFR $ renderHtml $
                 H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
                   H.toHtml errMsg
             Right (TextResult reply) -> do
               putStrLn $ "@[receiveMsg] reply: " <> show reply
-              pure . Right . Wt.AppendChildFR $ renderHtml $
+              pure . Right . Wd.AppendChildFR $ renderHtml $
                 mapM_ showMessageR (buildMessages (aText, startTime) (reply, endTime))
 
 

@@ -1,17 +1,20 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE BangPatterns #-}
 module Wapp.Handlers where
 
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader (asks)
+import qualified Control.Monad.RWS.Lazy as Rws
+-- Gm => Global Monad
+import qualified Control.Monad.Reader as Gm
 import Control.Exception.Safe (tryAny, bracket)
 import Control.Exception (throw, SomeException (..))
 import Control.Monad.Catch (throwM)
-import Control.Monad (forever, void)
+import Control.Monad (forever, void, when)
 import Control.Concurrent (forkIO, killThread, ThreadId, threadDelay)
 import qualified Control.Concurrent.STM as Cs
-import qualified Control.Concurrent.STM.TMVar as Ct
 
-import qualified Control.Monad.RWS as Rws
-import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy as Lbs
 import qualified Data.ByteString.Lazy.Char8 as Bs
 import qualified Data.List as L
 import qualified Data.Map as Mp
@@ -41,7 +44,7 @@ import Hasql.Pool (Pool)
 
 import qualified HttpSup.Types as Ht
 import Wapp.HtmxSupport
-import Api.Types (EasyVerseApp, AppEnv (..), Html (..))
+import Api.Types (EasyVerseApp (..), AppEnv (..), Html (..))
 import qualified Options.Runtime as Rt
 
 import WordPress.Wrapper (handlePhpRequest)
@@ -52,11 +55,14 @@ import qualified Wapp.Registry as Wr
 
 import qualified Wapp.JSSupport as Jss
 import Wapp.WsRouter (routeRequest)
-import Wapp.FileWatcher (fileWatcher, WatcherControl (..))
-import Wapp.Types (RoutingTable, RouteArg (..), ResolvedApp (..)
-          , WsSession (..), User (..), UserProfile (..), ExecContext (..)
-          , ExecResult (..), Message (..), Status (..), ReferenceEnv (..), AppContext
-          , PairReference (..), FunctionReply (..), JSExecSupport (..))
+import Wapp.FileWatcher (WatcherControl (..), newWatcher)
+import Wapp.Types (
+          ClientContext (..), ExecResult (..), Message (..)
+          , Status (..), ReferenceEnv (..), AppContext
+          , JSExecSupport (..), AppEvent (..), ClientMessage (..))
+import Wapp.AppDef (RoutingTable, RouteArg (..), ResolvedApp (..)
+          , PairReference (..), FunctionReply (..))
+import Wapp.State (User (..), UserProfile (..), fakeSession, WappState (..), Session (..), LiveWapp (..))
 
 
 wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
@@ -70,16 +76,16 @@ wappHandlers =
 
 welcomeHdZN :: EasyVerseApp Html
 welcomeHdZN = do
-  rtOpts <- asks config_Ctxt
+  rtOpts <- Gm.asks config_Ctxt
   let
     targetFile = rtOpts.zb.zbRootPath <> "/mainFrame_1.html"
   content <- liftIO $ Bs.readFile targetFile
-  pure . Html . LBS.toStrict $ content
+  pure . Html . Lbs.toStrict $ content
 
 phpTestHdl :: Maybe (Either Text Int) -> EasyVerseApp Html
 phpTestHdl mbPostID = do
   _ <- liftIO . P.putStrLn $ "@[indexHdZN] mbPostID: " <> show mbPostID
-  rtOpts <- asks config_Ctxt
+  rtOpts <- Gm.asks config_Ctxt
   let
     targetUrl = "zpns/index.php"
     argMap = case mbPostID of
@@ -95,239 +101,249 @@ phpTestHdl mbPostID = do
 
 -- MonadIO m => WS.Connection -> m ()
 wsStreamInit :: Text -> WS.Connection -> EasyVerseApp ()
-wsStreamInit sid conn = do
-  rtOpts <- asks config_Ctxt
-  pgDb <- asks pgPool_Ctxt
-  routeDict <- asks routeDict_Ctxt
-  liftIO $ WS.withPingThread conn 30 (pure ()) $
-    case Uu.fromString (T.unpack sid) of
-      Nothing -> do
-        liftIO . putStrLn $ "@[wsStreamHandler] invalid id: " <> show sid
-        pure ()
-      Just aid -> do
+wsStreamInit appID conn = do
+  rtOpts <- Gm.asks config_Ctxt
+  pgDb <- Gm.asks pgPool_Ctxt
+  eiTargetApp <- getTargetApp (T.unpack appID)
+
+  case eiTargetApp of
+    Left errMsg -> do
+      liftIO . putStrLn $ "@[wsStreamInit] error: " <> show errMsg
+      pure ()
+    Right aLiveApp -> do
+      liftIO $ WS.withPingThread conn 30 (pure ()) $ do
         -- liftIO $ WS.sendTextData conn ("<div id=\"notifications\" hx-swap-oob=\"beforeend\">Some message</div?" :: Bs.ByteString)
         -- TODO: figure out the routing-table refresh mechanism that doesn't require a websocket reconnection.
-        case Mp.lookup aid routeDict of
-          Nothing -> do
-            liftIO . putStrLn $ "@[wsStreamHandler] no routing table found."
-            pure ()
-          Just appDef ->
-            handleClient rtOpts pgDb appDef
+        fakeSessionID <- liftIO Uu.nextRandom
+        fakeUserID <- liftIO Uu.nextRandom
+        let
+          firstLib = case aLiveApp.wapp.libs of
+            [] ->
+              PairReference { label = "main", ident = "main" }
+            (x:_) -> x
+        jsSupport <- case firstLib.ident of
+          "" -> pure Nothing
+          anIdent -> do
+            (jsSession, jsModule) <- do
+              liftIO $ Jss.initJS (aLiveApp.wapp.rootPath </> T.unpack anIdent) firstLib.label
+            pure $ Just $ JSExecSupport jsSession jsModule
+        let
+          newContext = ClientContext {
+            liveApp = aLiveApp
+            , heap = Mp.empty
+            , status = RunningST
+            , jsSupport = jsSupport
+            , session = fakeSession fakeSessionID fakeUserID
+            , actionList = []
+            }
+        handleClient rtOpts pgDb newContext
   where
-  handleClient :: Rt.RunOptions -> Pool -> ResolvedApp -> IO ()
-  handleClient rtOpts pgDb resolvedApp = do
+  getTargetApp :: String -> EasyVerseApp (Either String LiveWapp)
+  getTargetApp reqID = do
+    wState <- Gm.asks state_Tmp
+    case Uu.fromString reqID of
+      Nothing -> do
+        liftIO . putStrLn $ "@[getTargetApp] invalid id: " <> reqID
+        pure $ Left $ "@[getTargetApp] invalid id: " <> reqID
+      Just aUID -> do
+        liftIO $ P.putStrLn $ "@[getTargetApp] looking for appID: " <> show aUID
+        liftIO $ P.putStrLn $ "@[getTargetApp] cache: " <> show wState.cache
+        case Mp.lookup aUID wState.cache of
+          Nothing -> do
+            case Mp.lookup aUID wState.appDefs of
+              Nothing ->
+                pure . Left $ "@[getTargetApp] no routing table found, appID: " <> show aUID
+              Just appDef -> do
+                -- TODO: make the creation of newWatcher conditional to the appDef config.
+                -- TODO: create signaler/commChannel here, pass to newWatcher instead of letting it create.
+                newCommChannel <- liftIO $ Cs.newTVarIO ""
+                newUpdateSignal <- liftIO $ Cs.newEmptyTMVarIO
+                newWatcher <- liftIO $ newWatcher appDef.rootPath newCommChannel newUpdateSignal
+                let
+                  newApp = LiveWapp {
+                    wapp = appDef
+                    , watcher = Just newWatcher
+                    , signaler = newUpdateSignal
+                    , commChannel = newCommChannel
+                    }
+                let
+                  newState = wState { cache = Mp.insert aUID newApp wState.cache }
+                liftIO $ P.putStrLn $ "@[getTargetApp] adding new liveApp, ID: " <> show aUID
+                pure $ Right newApp
+          Just liveApp -> do
+            liftIO $ P.putStrLn $ "@[getTargetApp] found liveApp, ID: " <> show aUID
+            pure $ Right liveApp
+
+  handleClient :: Rt.RunOptions -> Pool -> ClientContext -> IO ()
+  handleClient rtOpts pgDb execCtxt = do
     -- TODO: handle the case with a empty list of libs.
     let
-      firstLib = case resolvedApp.libs of
-        [] ->
-          PairReference { label = "main", ident = "main" }
-        (x:_) -> x
-    fakeSessionID <- liftIO Uu.nextRandom
-    fakeUserID <- liftIO Uu.nextRandom
-    let
-      jsFilePath = resolvedApp.rootPath
-    newFileUpdater <- liftIO $ Cs.newTVarIO ""
-    updateSignal <- Ct.newEmptyTMVarIO
-    let
-      fileChangeHandler :: FilePath -> IO ()
-      fileChangeHandler filePath = do
-        putStrLn $ "@[fileChangeHandler] Detected change in code file: " <> filePath
-
-        -- Update the shared TVar with new bytecode and increment version
-        Cs.atomically $ do
-          oldState <- Cs.readTVar newFileUpdater
-          Cs.writeTVar newFileUpdater filePath
-
-        -- Signal all WebSocket handlers about the update
-        Cs.atomically $ Ct.putTMVar updateSignal ()
-
-        putStrLn "@[fileChangeHandler] updated successfully."
-
-
-    -- watcherId <- forkIO $ setupFileWatcher jsFilePath newFileUpdater updateSignal
-    watcherControl <- fileWatcher jsFilePath fileChangeHandler
-    jsSupport <- case firstLib.ident of
-      "" -> pure Nothing
-      anIdent -> do
-        (jsSession, jsModule) <- do
-          liftIO $ Jss.initJS (jsFilePath </> T.unpack anIdent) firstLib.label
-        pure $ Just $ JSExecSupport jsSession jsModule
-    let
-      refEnv = ReferenceEnv rtOpts pgDb Mp.empty newFileUpdater updateSignal
-      session = fakeSession fakeSessionID fakeUserID
-      execCtx = ExecContext session resolvedApp Mp.empty RunningST jsSupport
-    P.putStrLn $ "@[streamHandler] starting new session: " <> show fakeSessionID
-    (result, finalCtxt, messageSet) <- Rws.runRWST socketLoop refEnv execCtx
-    case jsSupport of
+      refEnv = ReferenceEnv rtOpts pgDb Mp.empty execCtxt.liveApp.signaler execCtxt.liveApp.commChannel
+    putStrLn $ "@[handleClient] starting new session: " <> show execCtxt.session.idSE
+    (result, finalCtxt, messageSet) <- Rws.runRWST startClientSession refEnv execCtxt
+    putStrLn $ "@[handleClient] ending session: " <> show execCtxt.session.idSE
+    case execCtxt.jsSupport of
       Nothing -> pure ()
       Just jsSupport -> Jss.endJS jsSupport.jsSession
-    -- killThread watcherId
-    watcherControl.stopWatcher
+    case execCtxt.liveApp.watcher of
+      Nothing -> pure ()
+      Just watcherControl -> do
+        putStrLn "@[handleClient] stopping watcher."
+        watcherControl.stopWatcher
     pure ()
 
-  socketLoop :: AppContext ()
-  socketLoop = do
-    rezA <- tryAny $ forever (streamExec 0)
+
+  startClientSession :: AppContext ()
+  startClientSession = do
+    rezA <- tryAny $ forever (clientIteration 0)
     case rezA of
       Left err -> do
-        liftIO . P.putStrLn $ "@[streamHandler] situation: " <> show err
-        liftIO closeConnection
+        liftIO . P.putStrLn $ "@[startClientSession] situation: " <> show err
+        rezA <- liftIO closeConnection
+        pure ()
       Right aVal -> do
-        liftIO . P.putStrLn $ "@[streamHandler] client disconnected."
+        liftIO . P.putStrLn $ "@[startClientSession] client disconnected."
 
 
-  setupFileWatcher :: FilePath -> Cs.TVar FilePath -> Ct.TMVar () -> IO ()
-  setupFileWatcher filePath bytecodeRef updateSignal = do
-    manager <- startManager
-    -- Watch for modifications to the code file
-    putStrLn $ "@[setupFileWatcher] watching: " <> takeDirectory filePath
-    _ <- watchTree manager (takeDirectory filePath) isTargetFile handleEvent
-    forever $ threadDelay 1000000
-    where
-      isTargetFile event =
-        case event of
-          Modified fPath timeStamp dirMode ->
-            case dirMode of
-              IsFile ->
-                (head (takeFileName fPath) /= '.')
-                && (case takeExtension fPath of -- eventPath event == filePath
-                    ".js" -> True
-                    ".elm" -> True
-                    ".html" -> True
-                    _ -> False)
-              IsDirectory -> False
-
-      handleEvent event = do
-        putStrLn $ "@[handleEvent] Detected change in code file: " ++ show event
-        -- Add a small delay to ensure the file is completely written
-        threadDelay 100000  -- 100ms
-        -- Update the shared TVar with new bytecode and increment version
-        Cs.atomically $ do
-          oldState <- Cs.readTVar bytecodeRef
-          Cs.writeTVar bytecodeRef filePath
-
-        -- Signal all WebSocket handlers about the update
-        Cs.atomically $ Ct.putTMVar updateSignal ()
-
-        putStrLn "@[handleEvent] updated successfully."
-
-
-  fakeSession :: Uu.UUID -> Uu.UUID -> WsSession
-  fakeSession fakeSessionID fakeUserID = WsSession {
-    sessionID = fakeSessionID
-    , user = User {
-      userID = fakeUserID
-      , profile = UserProfile {
-        name = "fakeUser"
-        , email = "fakeUser@example.com"
-        , avatar = Nothing
-        , prefLocale = "en"
-        }
-      }
-  }
-
-  streamExec :: Int -> AppContext () -- ExecResult, ExecContext, St.Set Message
-  streamExec i = do
+  clientIteration :: Int -> AppContext () -- ExecResult, ClientContext, St.Set Message
+  clientIteration i = do
     refEnv <- Rws.ask
     execCtxt <- Rws.get
-    liftIO . P.putStrLn $ "@[streamExec] starting."
-    -- rezA <- liftIO $ WS.receiveDataMessage conn
-    eiRezA <- liftIO $ interruptibleReceive conn refEnv.srvUpdate
+    -- liftIO . P.putStrLn $ "@[clientIteration] starting."
+    eiRezA <- liftIO $ interruptibleReceive conn refEnv.srvUpdate refEnv.commChannel
+    --liftIO . P.putStrLn $ "@[clientIteration] received message."
     case eiRezA of
       Left errMsg -> do
-        liftIO . P.putStrLn $ "@[streamExec] error: " <> errMsg
+        liftIO . putStrLn $ "@[clientIteration] error: " <> errMsg
         throwM $ userError errMsg
-      Right rezA ->
-        case rezA of
-          Nothing -> do
-            liftIO . P.putStrLn $ "@[streamExec] looping, no message."
-            pure ()
-          Just aMsg ->
-            case aMsg of
-              WS.Text msg decodedMsg ->
+      Right clientMsg -> do
+        -- liftIO . P.putStrLn $ "@[clientIteration] processing message: " <> show clientMsg
+        case clientMsg of
+          ErrorCM errMsg -> do
+            liftIO . putStrLn $ "@[clientIteration] error: " <> errMsg
+          EventCM anEvent ->
+            case anEvent of
+              FileUpdateAE aPath -> do
+                -- liftIO . putStrLn $ "@[clientIteration] got file update: " <> aPath
                 let
-                  hxMsg = eitherDecode msg :: Either String HxWsMessage
-                in
-                case hxMsg of
-                  Left err -> do
-                    liftIO . P.putStrLn $ "@[receiveStream] invalid HxWsMessage: " <> (T.unpack . decodeUtf8 . LBS.toStrict) msg
-                    liftIO . P.putStrLn $ "@[receiveStream] error: " <> show err
-                  Right hxMsg ->
-                    case hxMsg.wsMessage of
-                      Nothing ->
-                        case hxMsg.headers.mid of
-                          Nothing ->
-                            liftIO $ WS.sendTextData conn  ("<div class=\"text-red\"> NO MID</div>" :: Bs.ByteString)
-                          Just anID ->
-                            let
-                              jsonParams = case hxMsg.headers.params of
-                                Nothing -> Ae.Object Aek.empty
-                                Just params -> params
-                            in do
-                            {-
-                            let
-                              eiJsonParams = case hxMsg.headers.params of
-                                Nothing -> Right $ Ae.Object Aek.empty
-                                Just params -> case (Ae.decode $ LBS.fromStrict $ encodeUtf8 params :: Maybe Ae.Value) of
-                                  Just aValue -> Right aValue
-                                  _ -> Left $ maybe "@[receiveStream] invalid json params on empty string!" ("@[receiveStream] invalid json params." <>) hxMsg.headers.params
-                            -- TODO: need to extract the argMap from the ws-messsage.
-                            case eiJsonParams of
-                              Left errMsg ->
-                                liftIO $ do
-                                  P.putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
-                                  WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8) errMsg <> "</div>" :: Bs.ByteString)
-                              Right jsonParams -> do
-                              -}
-                                rezA <- liftIO $ routeRequest refEnv execCtxt hxMsg anID jsonParams
-                                case rezA of
-                                  Left errMsg ->
-                                    liftIO $ do
-                                      P.putStrLn $ "@[receiveStream] routeRequest error: " <> show errMsg
-                                      WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8 . T.pack) errMsg <> "</div>" :: Bs.ByteString)
-                                  Right aReply ->
-                                    let
-                                      target = case hxMsg.headers.target of
-                                        Just aValue -> "id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\""
-                                        Nothing -> ""
-                                      (modifiers, body) = case aReply of
-                                        BasicFR aHtml -> ("", aHtml)
-                                        AppendChildFR aHtml -> ("hx-swap-oob=\"beforeend\"", aHtml)
-                                        AfterEndFR aHtml -> ("hx-swap-oob=\"afterend\"", aHtml)
-                                      response = "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
-                                    in
-                                    liftIO $ WS.sendTextData conn response
-                      Just aText ->
-                        liftIO $ WS.sendTextData conn $ H.renderHtml $ Dmo.demoReply hxMsg.wsMessage
-              WS.Binary msg ->
-                liftIO . P.putStrLn $ "@[receiveStream] received binary."
-    pure ()
-
-  closeConnection = do
-    WS.sendClose conn ("Bye" :: Bs.ByteString)
-    void $ WS.receiveDataMessage conn
+                  repeatMsg = "{\"msgType\":\"msg\", \"message\":\"file update: " <> (Bs.fromStrict . encodeUtf8 . T.pack) aPath <> "\"}"
+                  firstLib = case execCtxt.liveApp.wapp.libs of
+                    [] ->
+                      PairReference { label = "main", ident = "main" }
+                    (x:_) -> x
+                case firstLib.ident of
+                  "" -> pure ()
+                  anIdent -> do
+                    when (execCtxt.liveApp.wapp.rootPath </> T.unpack anIdent == aPath) $ do
+                      (!jsSession, !jsModule) <- liftIO $ Jss.initJS aPath firstLib.label
+                      let
+                        newContext = execCtxt { jsSupport = Just $ JSExecSupport jsSession jsModule }
+                      Rws.put newContext
+                      case execCtxt.actionList of
+                        [] -> pure ()
+                        (hxMsg, anID, jsonParams) : _ -> do
+                          liftIO . putStrLn $ "@[clientIteration] replay last action."
+                          rezA <- liftIO $ routeRequest refEnv newContext hxMsg anID jsonParams
+                          case rezA of
+                            Left errMsg ->
+                              liftIO $ do
+                                putStrLn $ "@[clientIteration] routeRequest error: " <> show errMsg
+                                WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8 . T.pack) errMsg <> "</div>" :: Bs.ByteString)
+                            Right aReply ->
+                              let
+                                target = case hxMsg.headers.target of
+                                  Just aValue -> "id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\""
+                                  Nothing -> ""
+                                (modifiers, body) = case aReply of
+                                  BasicFR aHtml -> ("", aHtml)
+                                  AppendChildFR aHtml -> ("hx-swap-oob=\"beforeend\"", aHtml)
+                                  AfterEndFR aHtml -> ("hx-swap-oob=\"afterend\"", aHtml)
+                                response = "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
+                              in
+                              liftIO $ WS.sendTextData conn response
+              OutOfBandReplyAE aMsg -> do
+                liftIO . P.putStrLn $ "@[clientIteration] out-of-band reply."
+                liftIO $ WS.sendTextData conn  ( aMsg :: Bs.ByteString)
+              IdlingAE ->
+                pure ()
+          MessageCM aMsg -> do
+            processIncomingMessage conn aMsg
 
 
-  interruptibleReceive :: WS.Connection -> Ct.TMVar () -> IO (Either String (Maybe WS.DataMessage))
-  interruptibleReceive conn updateSignal = do
+  processIncomingMessage :: WS.Connection -> WS.DataMessage -> AppContext ()
+  processIncomingMessage conn aMsg = do
+    refEnv <- Rws.ask
+    execCtxt <- Rws.get
+    liftIO $ putStrLn $ "@[processIncomingMessage] aMsg: " <> show aMsg
+    case aMsg of
+      WS.Text msg decodedMsg ->
+        let
+          hxMsg = eitherDecode msg :: Either String HxWsMessage
+        in
+        case hxMsg of
+          Left err -> do
+            liftIO . P.putStrLn $ "@[clientIteration] invalid HxWsMessage: " <> (T.unpack . decodeUtf8 . Lbs.toStrict) msg
+            liftIO . P.putStrLn $ "@[clientIteration] error: " <> show err
+          Right hxMsg ->
+            case hxMsg.wsMessage of
+              Nothing ->
+                case hxMsg.headers.mid of
+                  Nothing ->
+                    liftIO $ WS.sendTextData conn  ("<div class=\"text-red\"> NO MID</div>" :: Bs.ByteString)
+                  Just anID ->
+                    let
+                      jsonParams = case hxMsg.headers.params of
+                        Nothing -> Ae.Object Aek.empty
+                        Just params -> params
+                    in do
+                      let
+                        newAction = (hxMsg, anID, jsonParams)
+                      Rws.modify $ \execCtxt -> execCtxt { actionList = newAction : execCtxt.actionList }
+                      rezA <- liftIO $ routeRequest refEnv execCtxt hxMsg anID jsonParams
+                      case rezA of
+                        Left errMsg ->
+                          liftIO $ do
+                            P.putStrLn $ "@[clientIteration] routeRequest error: " <> show errMsg
+                            WS.sendTextData conn ("<div class=\"text-red\"> " <> (Bs.fromStrict . encodeUtf8 . T.pack) errMsg <> "</div>" :: Bs.ByteString)
+                        Right aReply ->
+                          let
+                            target = case hxMsg.headers.target of
+                              Just aValue -> "id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\""
+                              Nothing -> ""
+                            (modifiers, body) = case aReply of
+                              BasicFR aHtml -> ("", aHtml)
+                              AppendChildFR aHtml -> ("hx-swap-oob=\"beforeend\"", aHtml)
+                              AfterEndFR aHtml -> ("hx-swap-oob=\"afterend\"", aHtml)
+                            response = "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
+                          in
+                          liftIO $ WS.sendTextData conn response
+              Just aText ->
+                liftIO $ WS.sendTextData conn $ H.renderHtml $ Dmo.demoReply hxMsg.wsMessage
+      WS.Binary msg ->
+        liftIO . P.putStrLn $ "@[clientIteration] received binary."
+
+
+  interruptibleReceive :: WS.Connection -> Cs.TMVar () -> Cs.TVar FilePath -> IO (Either String ClientMessage)
+  interruptibleReceive conn updateSignal commChannel = do
     -- Fork a thread to receive the next message
-    resultVar <- Ct.newEmptyTMVarIO
+    resultVar <- Cs.newEmptyTMVarIO
     receiverThread <- forkIO $ do
       result <- tryAny $ WS.receiveDataMessage conn
       case result of
-        Right msg -> Cs.atomically $ Ct.putTMVar resultVar (Right $ Just msg)
-        Left err -> Cs.atomically $ Ct.putTMVar resultVar (Left $ show err)
+        Right msg -> Cs.atomically $ Cs.putTMVar resultVar (Right $ MessageCM msg)
+        Left err -> Cs.atomically $ Cs.putTMVar resultVar (Left $ show err)
 
     -- Wait for either a message or an update signal
     result <- Cs.atomically $ (do
         -- Check for an external update
-        () <- Ct.takeTMVar updateSignal
+        () <- Cs.takeTMVar updateSignal
         -- Put the signal back for other handlers
         -- Ct.putTMVar updateSignal ()
-        pure $ Right Nothing
+        filePath <- Cs.readTVar commChannel
+        pure . Right . EventCM $ FileUpdateAE filePath
       ) `Cs.orElse` (do
         -- Check for incoming message
-        Ct.takeTMVar resultVar
+        Cs.takeTMVar resultVar
       )
 
     -- Clean up the receiver thread if it's still running
@@ -335,12 +351,19 @@ wsStreamInit sid conn = do
     return result
 
 
+  closeConnection = do
+    WS.sendClose conn ("Bye" :: Bs.ByteString)
+    tryAny $ WS.receiveDataMessage conn
+
+
+
+
 xStaticHdl :: [String] -> EasyVerseApp Html
 xStaticHdl segments = do
-  rtOpts <- asks config_Ctxt
+  rtOpts <- Rws.asks config_Ctxt
   let
     -- Used to have the "/xstatic/" path in between root & segments.
     targetFile = rtOpts.zb.zbRootPath </> L.intercalate "/" segments
   liftIO . putStrLn $ "@[xStaticHandler] pageUrl: " <> targetFile
-  pageContent <- liftIO $ LBS.readFile targetFile
-  pure . Html . LBS.toStrict $ pageContent
+  pageContent <- liftIO $ Lbs.readFile targetFile
+  pure . Html . Lbs.toStrict $ pageContent

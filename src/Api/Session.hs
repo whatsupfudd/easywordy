@@ -33,7 +33,7 @@ loginUser request = do
     Left errMsg ->
       pure . ErrorLR $ "@[loginReq] authorizeNewSession err: " <> errMsg
     Right authRez ->
-      pure $ authRez
+      pure authRez
 
 
 {-

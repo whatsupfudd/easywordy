@@ -1,20 +1,20 @@
 module Commands.Server where
 
-import Network.Wai.Handler.Warp as Wrp
-
+import qualified Control.Concurrent.STM as Cs
 import Control.Exception (bracket)
 import Control.Monad.Cont (runContT, ContT (..))    -- liftIO
 
 import System.Posix (installHandler)
 
-
 import Database.MySQL.Base (connect, defaultConnectInfo, query_, ConnectInfo(..))
 
+import Network.Wai.Handler.Warp as Wrp
 
 import Api.Handlers (setupWai)
 import WordPress.Wrapper (defineSapiModuleStruct, endPhp)
 import DB.Connect (startMql, startPg)
 import ServeApi (launchServant)
+import Wapp.FileWatcher (newWatcher)
 import Wapp.Registry (loadAppDefs)
 import Options.Runtime as Rto
 
@@ -23,6 +23,10 @@ serverCmd rtOpts = do
   putStrLn $ "@[serverCmd] starting, wapp: " <> show rtOpts.wapp <> "\n  zhopness: " <> show rtOpts.zb
   sapiModuleDef <- defineSapiModuleStruct
   eiRouteDict <- loadAppDefs rtOpts.wapp
+  -- TODO: make the creation of defWatcher conditional to the runtime config.
+  newCommChannel <- Cs.newTVarIO ""
+  newUpdateSignal <- Cs.newEmptyTMVarIO
+  defWatcher <- newWatcher rtOpts.wapp.waDefDir newCommChannel newUpdateSignal
   case eiRouteDict of
     Left errMsg -> do
       putStrLn $ "@[serverCmd] error loading app defs: " <> errMsg
@@ -31,16 +35,16 @@ serverCmd rtOpts = do
       let
         mqlConn = startMql rtOpts.wp.mqlDbConf
         pgPool = startPg rtOpts.pgDbConf
-        contArgs = (,,,) <$> pgPool <*> mqlConn <*> pure sapiModuleDef <*> pure routeDict
+        contArgs = (,,,) <$> pgPool <*> mqlConn <*> pure sapiModuleDef <*> pure (routeDict, Just defWatcher)
       in do
-        putStrLn $ "@[serverCmd] going to start mainAction."
+        putStrLn "@[serverCmd] going to start mainAction."
         runContT contArgs mainAction
   where
-  mainAction (pgPool, mqlConn, sapiModuleDef, routeDict) = do
+  mainAction (pgPool, mqlConn, sapiModuleDef, appDefs) = do
     putStrLn $ "@[mainAction] starting."
     let 
       settings = setupWai rtOpts.serverPort rtOpts.serverHost (globalShutdownHandler sapiModuleDef)
-    webHandler <- launchServant rtOpts pgPool mqlConn sapiModuleDef routeDict
+    webHandler <- launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs
     putStrLn $ "@[mainAction] webHandler started."
     Wrp.runSettings settings webHandler
     putStrLn $ "@[serverCmd] ending."

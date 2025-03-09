@@ -76,10 +76,13 @@ initJS libPath moduleName = do
   let
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
   rezA <- eval session [js|
-    console.warn("@[initJS] module: ", $elmModule.default)
-    console.warn("@[initJS] mNameLBS: ", $mNameLBS)
+    jsModName = "" + $mNameLBS
+    // console.warn("@[initJS] module: ", $elmModule.default)
+    // console.warn("@[initJS] mNameLBS: ", jsModName)
 
-    const app = ($elmModule.default)['Elm'][$mNameLBS].init({ flags: { "locale" : "en" } })
+    const app = ($elmModule.default)['Elm'][jsModName].init({ flags: { "locale" : "en" } })
+
+    // console.warn("@[initJS] app: ", app)
     return app
   |]
   rsA <- evaluate rezA :: IO JSVal
@@ -98,8 +101,10 @@ runElmFunction jsSupport moduleName functionName jsonParams = do
     jsonParamsLBS = encode jsonParams
     jsElmModule = jsSupport.jsModule
   rezA <- eval jsSupport.jsSession [js|
-      const app = ($jsElmModule.default)['Elm'][$mNameLBS].init({ "flags": { "locale" : "en" } })
-  
+      jsModName = "" + $mNameLBS
+      const app = ($jsElmModule.default)['Elm'][jsModName].init({ "flags": { "locale" : "en" } })
+      // console.warn("@[runElmFunction] app: ", app)
+
       let resolvePromise
       let innerVal = new Promise((resolve) => {
         resolvePromise = resolve

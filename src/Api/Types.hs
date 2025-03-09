@@ -11,7 +11,8 @@ module Api.Types where
 
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Monad.Except (ExceptT, withExceptT, MonadIO, MonadError)
-import Control.Monad.Reader (ReaderT, MonadReader)
+import Control.Monad.Reader (MonadReader, ReaderT)
+-- import Control.Monad.RWS.Lazy (RWST, MonadReader, MonadState)
 
 import Data.Int (Int32)
 import Data.Text (Text)
@@ -39,7 +40,10 @@ import Database.MySQL.Base (MySQLConn)
 import Foreign (Ptr)
 
 import qualified Options.Runtime as Rt
-import Wapp.Types (RoutingDictionary)
+-- import Wapp.Types (RoutingDictionary)
+import qualified Wapp.State as Ws
+import qualified Wapp.FileWatcher as Wf
+import Data.Set (Set)
 
 -- Client Data going in / out.
 data ClientInfo = ClientInfo {
@@ -60,7 +64,7 @@ data LoginForm = LoginForm { username :: Text, secret :: Text }
   deriving anyclass (ToJSON, FromJSON)
 
 
-data LoginRequest =
+newtype LoginRequest =
   SimpleLR LoginForm
 
 
@@ -92,7 +96,8 @@ data AppEnv = AppEnv {
     , pgPool_Ctxt :: Pool
     , mqlConn_Ctxt :: MySQLConn
     , sapiModuleDef_Ctxt :: Ptr ()
-    , routeDict_Ctxt :: RoutingDictionary
+    , appDefWatcher_Ctxt :: Maybe Wf.WatcherControl
+    , state_Tmp :: Ws.WappState
   }
 
 
@@ -117,6 +122,7 @@ asServantError error =
 
 -- Main Application / handler for the API:
 newtype EasyVerseApp api = EasyVerseApp {
+     -- apiHandler :: RWST AppEnv (Set Ws.ErrMessage) Ws.WappState (ExceptT ApiError IO) api
      apiHandler :: ReaderT AppEnv (ExceptT ApiError IO) api
   }
   deriving newtype ( 
@@ -129,10 +135,11 @@ newtype EasyVerseApp api = EasyVerseApp {
       MonadReader AppEnv,
       MonadIO,
       MonadError ApiError
+      -- , MonadState Ws.WappState
     )
 
 
-data AuthenticatedRoutes route = AuthenticatedRoutes {
+newtype AuthenticatedRoutes route = AuthenticatedRoutes {
     -- TODO: generalize to get-any-asset.
     getPage :: route :- ToServantApi GetPageRoutes
   }
@@ -147,7 +154,7 @@ data AnonymousRoutes route = AnonymousRoutes {
   deriving stock (Generic)
 
 
-data GetPageRoutes route = GetPageRoutes { 
+newtype GetPageRoutes route = GetPageRoutes { 
     getPage :: route :- "p" :> Capture "path" String :> Get '[HTML] Html
   }
   deriving stock (Generic)

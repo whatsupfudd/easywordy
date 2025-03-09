@@ -36,18 +36,18 @@ import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import qualified Text.Markdown as Md
 
 import qualified Options.Runtime as Rt
-import qualified Wapp.Types as Wt
+import qualified Wapp.AppDef as Wd
 
 
-startSession :: Wt.InternalFunction
+startSession :: Wd.InternalFunction
 startSession rtOpts pgDb (jsonParams, content) = do
   rezA <- fetchConvURL rtOpts
   case rezA of
     Left err -> do
-      pure . Right . Wt.BasicFR $ renderHtml $
+      pure . Right . Wd.BasicFR $ renderHtml $
         H.h2 H.! A.class_ "text-2xl font-bold" $ H.text ("Avatar error: " <>  pack err)
     Right convURL -> do
-      pure . Right . Wt.BasicFR $ renderHtml $
+      pure . Right . Wd.BasicFR $ renderHtml $
         showResult convURL
 
 {-

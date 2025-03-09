@@ -23,36 +23,38 @@ import Data.Word (Word8)
 
 import Wapp.HtmxSupport (HxWsMessage (..))
 import Wapp.JSSupport as Jss (runElmFunction, JSReturn (..))
+import qualified Wapp.AppDef as Wd
+import Wapp.State (LiveWapp (..))
 import Wapp.Types
 
-routeRequest :: ReferenceEnv -> ExecContext -> HxWsMessage -> Text -> Ae.Value -> IO (Either String FunctionReply)
+routeRequest :: ReferenceEnv -> ClientContext -> HxWsMessage -> Text -> Ae.Value -> IO (Either String Wd.FunctionReply)
 routeRequest refEnv execCtxt hxMsg anID jsonParams =
-  case Mp.lookup anID execCtxt.resolvedApp.functions of
+  case Mp.lookup anID execCtxt.liveApp.wapp.functions of
     Nothing -> do
       putStrLn $ "@[routeRequest] templatePath not found: " <> show anID
       pure . Left $ "ERROR: templatePath not found: " <> T.unpack anID
-    Just (ExecFileRL templatePath _) -> do
+    Just (Wd.ExecFileRL templatePath _) -> do
       putStrLn $ "@[routeRequest] templatePath: " <> templatePath
       rezA <- try $
-        liftIO $ Lbs.readFile (refEnv.runOpts.wapp.waContentDir </> execCtxt.resolvedApp.rootPath </> templatePath)
+        liftIO $ Lbs.readFile (refEnv.runOpts.wapp.waContentDir </> execCtxt.liveApp.wapp.rootPath </> templatePath)
       case rezA of
         Left err -> do
           putStrLn $ "@[routeRequest] error reading file: " <> show (err :: SomeException)
           pure . Left $ "ERROR: error reading file: " <> show (err :: SomeException)
         Right response -> do
           -- putStrLn $ "@[routeRequest] sending " <> show (Lbs.length response) <> " bytes."
-          pure . Right $ BasicFR response
-    Just (FunctionRL fetchFunc) -> do
+          pure . Right $ Wd.BasicFR response
+    Just (Wd.FunctionRL fetchFunc) -> do
       putStrLn $ "@[routeRequest] function: " <> T.unpack anID
       -- The 'fmap fromStrict' creates the monadic converter, and the '<$>' applies it
       -- into the IO instance.
       case fetchFunc of
-        Internal fct ->
+        Wd.Internal fct ->
           fct refEnv.runOpts refEnv.pgPool (jsonParams, hxMsg.content)
-        External (libPath, moduleName,fctName) ->
+        Wd.External (libPath, moduleName,fctName) ->
           case execCtxt.jsSupport of
             Nothing -> do
-              putStrLn $ "@[routeRequest] no jsSupport."
+              putStrLn "@[routeRequest] no jsSupport."
               pure . Left $ "ERROR: no jsSupport."
             Just jsSupport -> do
               rezA <- try $ Jss.runElmFunction jsSupport moduleName fctName jsonParams
@@ -64,6 +66,6 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
                   putStrLn "@[routeRequest] Jss.runElmFunction finished."
                   case jsReturn.result of
                     "ok" ->
-                      pure . Right $ BasicFR $ Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content
+                      pure . Right $ Wd.BasicFR $ Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content
                     "err" ->
                       pure . Left $ "ERROR: " <> T.unpack jsReturn.content

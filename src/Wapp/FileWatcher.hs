@@ -2,9 +2,12 @@
 {-# HLINT ignore "Use forM_" #-}
 module Wapp.FileWatcher where
 
+import Control.Monad.IO.Class (liftIO)
 import Control.Concurrent (forkIO, threadDelay, killThread, ThreadId)
 import Control.Concurrent.Chan (Chan, newChan, readChan)
 import Control.Concurrent.MVar (MVar, newMVar, modifyMVar)
+import qualified Control.Concurrent.STM as Cs
+import qualified Control.Concurrent.STM.TMVar as Ct
 import Control.Exception (bracket)
 import Control.Monad (forever, void, when)
 
@@ -14,6 +17,7 @@ import Data.Time.Clock (UTCTime, getCurrentTime, diffUTCTime)
 
 import System.FilePath ((</>), takeDirectory, takeExtension, takeFileName)
 import System.FSNotify (Event(..), WatchManager, EventIsDirectory (..), watchTreeChan, withManager, stopManager, startManager)
+import Control.Monad.Cont (lift)
 
 
 -- | Debouncer state for tracking file modification times
@@ -22,12 +26,16 @@ data DebouncerState = DebouncerState {
   , duration :: Int -- microseconds
   , threads :: Map FilePath ThreadId -- For tracking and killing threads
   }
+ deriving (Show)
 
 -- | Watcher control structure to manage the file watcher lifecycle
 data WatcherControl = WatcherControl {
     stopWatcher :: IO ()
   , watcherThreadId :: ThreadId
   }
+
+instance Show WatcherControl where
+  show wCtrl = "WatcherControl { threadID: " <> show wCtrl.watcherThreadId <>  " }"
 
 -- | Initialize a new debouncer state with the given duration in milliseconds
 initDebouncerState :: Int -> DebouncerState
@@ -39,8 +47,11 @@ initDebouncerState durationMs = DebouncerState {
 
 -- | Process events from the event channel with debouncing
 -- Returns a control structure to stop the watcher
-fileWatcher :: FilePath -> (FilePath -> IO ()) -> IO WatcherControl
-fileWatcher watchDir onFileChanged = do
+newWatcher :: FilePath -> Cs.TVar FilePath -> Cs.TMVar () -> IO WatcherControl
+newWatcher watchDir commChannel updateSignal = do
+  let
+    changeHandler = fileChangeHandler commChannel updateSignal
+
   putStrLn $ "@[fileWatcher] watching: " <> watchDir
   -- Create an MVar to hold our debouncer state
   stateVar <- newMVar $ initDebouncerState 500 -- 500ms debounce time
@@ -49,10 +60,10 @@ fileWatcher watchDir onFileChanged = do
   _ <- watchTreeChan mgr watchDir isTargetFile eventChan
       
   -- Start the event processor thread
-  processorThreadId <- forkIO $ eventProcessor stateVar eventChan onFileChanged
-  
+  processorThreadId <- forkIO $ eventProcessor stateVar eventChan changeHandler
+
   -- Return the control structure
-  return $ WatcherControl { 
+  pure $ WatcherControl { 
         stopWatcher = do
           killThread processorThreadId
           cleanupThreads stateVar
@@ -60,8 +71,7 @@ fileWatcher watchDir onFileChanged = do
       , watcherThreadId = processorThreadId
     }
   where
-  isTargetFile event = True
-  isTargetFileB event =
+  isTargetFile event =
     case event of
       Modified fPath timeStamp dirMode ->
         case dirMode of
@@ -71,8 +81,24 @@ fileWatcher watchDir onFileChanged = do
                 ".js" -> True
                 ".elm" -> True
                 ".html" -> True
+                ".yaml" -> True
+                ".css" -> True
                 _ -> False)
           IsDirectory -> False
+
+
+fileChangeHandler :: Cs.TVar FilePath -> Ct.TMVar () -> FilePath -> IO ()
+fileChangeHandler commChannel updateSignal filePath = do
+  -- putStrLn $ "@[fileChangeHandler] Detected change in code file: " <> filePath
+
+  -- Update the shared TVar with new bytecode and increment version
+  Cs.atomically $ do
+    oldState <- Cs.readTVar commChannel
+    Cs.writeTVar commChannel filePath
+
+  -- Signal all WebSocket handlers about the update
+  Cs.atomically $ Ct.putTMVar updateSignal ()
+  -- putStrLn "@[fileChangeHandler] ending."
 
 -- | Process events from the channel
 eventProcessor :: MVar DebouncerState -> Chan Event -> (FilePath -> IO ()) -> IO ()

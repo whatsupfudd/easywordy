@@ -26,9 +26,9 @@ import qualified Text.Blaze.Htmx.WebSockets as X
 import qualified Text.Blaze.Internal as Bli
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 
-
 import qualified Options.Runtime as Rt
-import qualified Wapp.Types as Wt
+import qualified Wapp.AppDef as Wd
+
 import WordPress.Opers (getVersions, getFoldersForVersion, getFilesForFolder
           , getConstantsForFile, getAstForFile, getFileDetailsForID
           , getErrorForFile, getFolderDetailsForID)
@@ -52,11 +52,11 @@ newtype FileParams = FileParams {
 
 -- type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String FunctionReply)
 
-fetchVersions :: Wt.InternalFunction
+fetchVersions :: Wd.InternalFunction
 fetchVersions rtOpts pgDb (jsonParams, _) = do
   rezA <- getVersions pgDb
   case rezA of
-    Left err -> pure . Right . Wt.BasicFR $ renderHtml $ H.div
+    Left err -> pure . Right . Wd.BasicFR $ renderHtml $ H.div
         H.! A.id "mainContainer"
         H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
     Right versions ->
@@ -81,10 +81,10 @@ fetchVersions rtOpts pgDb (jsonParams, _) = do
                   H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
                 ) versions
       in
-      pure . Right . Wt.BasicFR $ renderHtml response
+      pure . Right . Wd.BasicFR $ renderHtml response
 
 
-fetchFolders :: Wt.InternalFunction
+fetchFolders :: Wd.InternalFunction
 fetchFolders rtOpts pgDb (jsonParams, _) =
   let
     eiVersionParams = case Ae.fromJSON jsonParams :: Ae.Result VersionParams of
@@ -92,13 +92,13 @@ fetchFolders rtOpts pgDb (jsonParams, _) =
       Ae.Error errMsg -> Left errMsg
   in
   case eiVersionParams of
-    Left errMsg -> pure . Right . Wt.BasicFR $ renderHtml $ H.div
+    Left errMsg -> pure . Right . Wd.BasicFR $ renderHtml $ H.div
         H.! A.id "mainContainer"
         H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
     Right folderArgs -> do
       rezA <- getFoldersForVersion pgDb folderArgs.versionID
       case rezA of
-        Left err -> pure . Right . Wt.BasicFR . renderHtml $ H.div
+        Left err -> pure . Right . Wd.BasicFR . renderHtml $ H.div
           H.! A.id "mainContainer"
           H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
         Right versions ->
@@ -123,10 +123,10 @@ fetchFolders rtOpts pgDb (jsonParams, _) =
                       H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
                     ) versions
           in
-          pure . Right . Wt.BasicFR $ renderHtml response
+          pure . Right . Wd.BasicFR $ renderHtml response
 
 
-fetchFiles :: Wt.InternalFunction
+fetchFiles :: Wd.InternalFunction
 fetchFiles rtOpts pgDb (jsonParams, _) =
   let
     eiFolderParams = case Ae.fromJSON jsonParams :: Ae.Result FolderParams of
@@ -134,14 +134,14 @@ fetchFiles rtOpts pgDb (jsonParams, _) =
       Ae.Error errMsg -> Left errMsg
   in
   case eiFolderParams of
-    Left errMsg -> pure . Right . Wt.BasicFR . renderHtml $ H.div
+    Left errMsg -> pure . Right . Wd.BasicFR . renderHtml $ H.div
         H.! A.id "mainContainer"
         H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
     Right folderParams -> do
       rezA <- getFilesForFolder pgDb folderParams.folderID
       rezB <- getFolderDetailsForID pgDb folderParams.folderID
       case rezA of
-        Left err -> pure . Right . Wt.BasicFR . renderHtml $ H.div
+        Left err -> pure . Right . Wd.BasicFR . renderHtml $ H.div
             H.! A.id "mainContainer"
             H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
         Right files ->
@@ -173,10 +173,10 @@ fetchFiles rtOpts pgDb (jsonParams, _) =
                       H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
                     ) files
           in
-          pure . Right . Wt.BasicFR $ renderHtml response
+          pure . Right . Wd.BasicFR $ renderHtml response
 
 
-fetchFileDetails :: Wt.InternalFunction
+fetchFileDetails :: Wd.InternalFunction
 fetchFileDetails rtOpts pgDb (jsonParams, _) =
   let
     eiFileParams = case Ae.fromJSON jsonParams :: Ae.Result FileParams of
@@ -184,7 +184,7 @@ fetchFileDetails rtOpts pgDb (jsonParams, _) =
       Ae.Error errMsg -> Left errMsg
   in
   case eiFileParams of
-    Left errMsg -> pure . Right . Wt.BasicFR . renderHtml $ H.div
+    Left errMsg -> pure . Right . Wd.BasicFR . renderHtml $ H.div
         H.! A.id "mainContainer"
         H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
     Right fileParams -> do
@@ -201,24 +201,24 @@ fetchFileDetails rtOpts pgDb (jsonParams, _) =
           _ -> H.toHtml ("<i>No folder</i>" :: Text)
 
       case (rezA, rezB) of
-        (Left err, _) -> pure . Right . Wt.BasicFR . renderHtml $
+        (Left err, _) -> pure . Right . Wd.BasicFR . renderHtml $
             H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
-        (_, Left err) -> pure . Right . Wt.BasicFR . renderHtml $
+        (_, Left err) -> pure . Right . Wd.BasicFR . renderHtml $
             H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
         (Right (Just ast), Right (Just constants)) ->
           let
             derefedAst = printAst ast constants
           in
-          pure . Right . Wt.BasicFR . renderHtml $ H.div H.! A.id "mainContainer" $ do
+          pure . Right . Wd.BasicFR . renderHtml $ H.div H.! A.id "mainContainer" $ do
             folderPointer
             derefedAst
         _ -> do
           rezErr <- getErrorForFile pgDb fileParams.fileID
           case rezErr of
-            Left err -> pure . Right . Wt.BasicFR . renderHtml $
+            Left err -> pure . Right . Wd.BasicFR . renderHtml $
               H.div H.! A.id "mainContainer" H.! A.class_ "mx-4 text-gray-900 dark:text-gray-300" $ H.toHtml err
             Right (Just (errMsg, procTime)) ->
-              pure . Right . Wt.BasicFR . renderHtml $ do
+              pure . Right . Wd.BasicFR . renderHtml $ do
                 H.div H.! A.id "mainContainer" H.! A.class_ "p-4 text-gray-900 dark:text-gray-300" $ do
                   folderPointer
                   H.br

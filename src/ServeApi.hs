@@ -6,9 +6,10 @@ module ServeApi where
 
 import Control.Monad.Except (ExceptT, MonadError, withExceptT)
 import Control.Monad.Reader (runReaderT)
+-- import Control.Monad.RWS (runRWST)
 
 import Data.List.NonEmpty (NonEmpty (..))
-
+import qualified Data.Map as Mp
 import GHC.Generics
 
 import Servant (Proxy (..), Context (..), hoistServerWithContext, serveWithContext, Handler (..))
@@ -45,14 +46,16 @@ import qualified Options.Runtime as Rt
 
 
 -- Routing of requests (API definition):
-import Wapp.Types (RoutingDictionary)
-
+import Wapp.AppDef (RoutingDictionary)
+import Wapp.State (WappState (..))
+import Wapp.FileWatcher (WatcherControl)
+import Control.Monad.Cont (liftIO)
 type MainApi = ToServantApi TopRoutes
 
 
 -- serveApi ::  Rt.RunOptions -> Pool -> IO Application
-launchServant ::  Rt.RunOptions -> Pool -> MySQLConn -> Ptr () -> RoutingDictionary -> IO Application
-launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs = do
+launchServant ::  Rt.RunOptions -> Pool -> MySQLConn -> Ptr () -> (RoutingDictionary, Maybe WatcherControl) -> IO Application
+launchServant rtOpts pgPool mqlConn sapiModuleDef (appDefs, defWatcher) = do
   putStrLn $ "@[launchServant] starting, confFile: " <> show rtOpts.jwkConfFile <> "."
   -- TODO: figure out how to turn off JWT authentication.
   jwtKey <- maybe tmpJWK readJWK rtOpts.jwkConfFile
@@ -80,10 +83,14 @@ launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs = do
       Just aPolicy -> linkUp $ id :| [ logStdout, setCorsPolicy aPolicy ]
 
     -- TODO: add errorMw @JSON @'["message", "status"] when Servant.Errors is compatible with aeson-2.
-    -- TODO: enable corsMiddleware based on rtOpts.
-    -- appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, dbPool_Ctxt = dbPool }
+    -- TMP: The global state is not useful here, it needs to be managed at the top level in its own thread.
+    state = WappState { appDefs = appDefs, cache = Mp.empty, sessions = Mp.empty }
     appEnv = AppEnv { config_Ctxt = rtOpts, jwt_Ctxt = jwtSettings, pgPool_Ctxt = pgPool, mqlConn_Ctxt = mqlConn
-            , sapiModuleDef_Ctxt = sapiModuleDef, routeDict_Ctxt = appDefs }
+            , sapiModuleDef_Ctxt = sapiModuleDef
+            , appDefWatcher_Ctxt = defWatcher
+            , state_Tmp = state
+          }
+    -- TODO: add state to the handler if running with RWST.
     server = hoistServerWithContext serverApiProxy apiContextP (apiAsHandler appEnv) serverApiT
 
   putStrLn $ "@[serveApi] listening on port " <> show rtOpts.serverPort <> "."
@@ -96,7 +103,14 @@ launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs = do
 serverApiProxy :: Proxy MainApi
 serverApiProxy = Proxy
 
--- | Natural transformations between 'App' and 'Handler' monads
-apiAsHandler :: AppEnv -> EasyVerseApp a -> Handler a
-apiAsHandler e =
-  Handler . withExceptT asServantError . flip runReaderT e . apiHandler
+
+-- Manages the application environment and projects to the Handler after a request processing. It is invoked for each request.
+-- apiAsHandler :: AppEnv -> WappState -> EasyVerseApp api -> Handler api
+-- apiAsHandler env state app =
+apiAsHandler :: AppEnv -> EasyVerseApp api -> Handler api
+apiAsHandler env = do
+  Handler . withExceptT asServantError . flip runReaderT env . apiHandler
+  {- With state:
+  Handler $ withExceptT asServantError
+    ((\(a, _, _) -> a) <$> runRWST (apiHandler app) env state)
+  --}
