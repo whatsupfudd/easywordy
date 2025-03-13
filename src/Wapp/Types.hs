@@ -54,8 +54,6 @@ data Status =
   | ErrorST String
 
 
-type JsExecBlock = (HxWsMessage, Text, Value)
-
 data ClientContext = ClientContext {
   session :: Ws.Session
   , liveApp :: Ws.LiveWapp
@@ -64,6 +62,14 @@ data ClientContext = ClientContext {
   , jsSupport :: Maybe JSExecSupport
   , actionList :: [ JsExecBlock ]
   }
+
+type JsExecBlock = (HxWsMessage, Text, Value)
+
+data JSExecSupport = JSExecSupport {
+    jsSession :: Js.Session
+  , jsModule :: Js.JSVal
+  }
+
 
 data AppEvent =
   FileUpdateAE FilePath
@@ -77,10 +83,6 @@ data ClientMessage =
   | MessageCM WS.DataMessage
   deriving (Show)
 
-data JSExecSupport = JSExecSupport {
-    jsSession :: Js.Session
-  , jsModule :: Js.JSVal
-  }
 
 newtype ExecResult = ExecResult {
    code :: Int

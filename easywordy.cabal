@@ -28,8 +28,6 @@ library
       Api.Handlers
       Api.Session
       Api.Types
-      Chat.Logic
-      Chat.Video
       Commands
       Commands.Help
       Commands.Server
@@ -53,6 +51,11 @@ library
       Routing.TopHandlers
       ServeApi
       Wapp.AppDef
+      Wapp.Apps.Scenario.Presentation.Storage
+      Wapp.Apps.Scenario.Presentation.Types
+      Wapp.Apps.Scenario.Prez
+      Wapp.Apps.Z14L.Logic
+      Wapp.Apps.Z14L.Video
       Wapp.FileWatcher
       Wapp.Handlers
       Wapp.HtmxSupport
@@ -120,6 +123,7 @@ library
     , openai-client
     , optparse-applicative
     , postgresql-binary
+    , profunctors
     , rio
     , safe-exceptions
     , servant
@@ -199,6 +203,7 @@ executable easywordy
     , openai-client
     , optparse-applicative
     , postgresql-binary
+    , profunctors
     , rio
     , safe-exceptions
     , servant
@@ -279,6 +284,7 @@ test-suite easywordy-test
     , openai-client
     , optparse-applicative
     , postgresql-binary
+    , profunctors
     , rio
     , safe-exceptions
     , servant

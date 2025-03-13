@@ -77,15 +77,17 @@ initJS libPath moduleName = do
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
   rezA <- eval session [js|
     jsModName = "" + $mNameLBS
-    // console.warn("@[initJS] module: ", $elmModule.default)
-    // console.warn("@[initJS] mNameLBS: ", jsModName)
+    // console.warn("@[initJS.eval] elmModule: ", $elmModule)
+    // console.warn("@[initJS.eval] module: ", $elmModule.default)
+    // console.warn("@[initJS.eval] mNameLBS: ", jsModName)
 
     const app = ($elmModule.default)['Elm'][jsModName].init({ flags: { "locale" : "en" } })
 
-    // console.warn("@[initJS] app: ", app)
+    // console.warn("@[initJS.eval] app: ", app)
     return app
   |]
   rsA <- evaluate rezA :: IO JSVal
+  -- putStrLn $ "@[initJS] done; rez: " <> show rsA
   return (session, elmModule)
 
 endJS :: Session -> IO ()
@@ -94,7 +96,9 @@ endJS session = do
 
 runElmFunction :: JSExecSupport -> Text -> Text -> Value -> IO JSReturn
 runElmFunction jsSupport moduleName functionName jsonParams = do
-  putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName <> ", functionName: " <> unpack functionName
+  putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName
+      <> ", functionName: " <> unpack functionName
+      <> ", jsonParams: " <> show jsonParams
   let
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
@@ -130,4 +134,5 @@ runElmFunction jsSupport moduleName functionName jsonParams = do
       const result = await doTest(strFctName)
       return result    
     |]
+  -- putStrLn $ "@[runElmFunction] done; rez: " <> show rezA
   evaluate rezA :: IO JSReturn

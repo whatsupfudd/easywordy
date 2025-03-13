@@ -111,6 +111,8 @@ dependencies:
   - stm
   # For file watching:
   - fsnotify
+  # For scenario support:
+  - profunctors
 
 
 default-extensions:

@@ -6,9 +6,9 @@ import Data.Text (Text)
 import qualified Wapp.AppDef as Wd
 
 import qualified WordPress.Functions as Wpf
-import qualified Chat.Logic as Cl
-import qualified Chat.Video as Cv
-
+import qualified Wapp.Apps.Z14L.Logic as Cl
+import qualified Wapp.Apps.Z14L.Video as Cv
+import qualified Wapp.Apps.Scenario.Prez as Sc
 
 type LibraryMap = Mp.Map Text (Mp.Map Text Wd.InternalFunction)
 
@@ -24,5 +24,8 @@ buildInternalLibrary = Mp.fromList [
     , ("internal.chat", Mp.fromList [
       ("receiveMsg", Cl.receiveMsg)
       , ("startVideoSession", Cv.startSession)
+    ])
+    , ("internal.scenario", Mp.fromList [
+      ("browsePrez", Sc.browsePrez)
     ])
   ]

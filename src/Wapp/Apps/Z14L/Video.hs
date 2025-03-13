@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Avoid lambda" #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-module Chat.Video where
+
+module Wapp.Apps.Z14L.Video where
 
 import qualified Data.ByteString.Lazy as Lbs
 
