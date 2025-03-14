@@ -57,7 +57,7 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
               putStrLn "@[routeRequest] no jsSupport."
               pure . Left $ "ERROR: no jsSupport."
             Just jsSupport -> do
-              rezA <- try $ Jss.runElmFunction jsSupport moduleName fctName jsonParams
+              rezA <- try $ Jss.runElmFunction jsSupport execCtxt.liveApp.db moduleName fctName jsonParams
               case rezA of
                 Left err -> do
                   putStrLn $ "@[routeRequest] Jss.runElmFunction err: " <> show (err :: SomeException)

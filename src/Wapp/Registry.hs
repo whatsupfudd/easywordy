@@ -7,6 +7,7 @@ import Data.Either (lefts, rights)
 import Data.List (intercalate)
 import qualified Data.Map as Mp
 import Data.Text (Text, pack, unpack)
+import Data.Text.Encoding (encodeUtf8)
 import Data.UUID (UUID)
 import qualified System.Directory as Sd
 import qualified System.Environment as Se
@@ -18,7 +19,7 @@ import qualified Data.Yaml as Y
 
 import qualified Options.Runtime as Rt
 import Wapp.InternalLib (buildInternalLibrary, LibraryMap)
-
+import qualified DB.Connect as Db
 import qualified Wapp.Types as Wt
 import qualified Wapp.AppDef as Wd
 
@@ -105,6 +106,17 @@ resolveAppDef wappConf fctResolver appDef =
       in
       case lefts eiFcts of
         [] ->
+          let
+            mbDbConf = case appDef.db of
+              Just dbConf ->
+                Just $ Db.defaultPgDbConf {
+                  Db.host = encodeUtf8 dbConf.host
+                  , Db.user = encodeUtf8 dbConf.user
+                  , Db.passwd = encodeUtf8 dbConf.password
+                  , Db.dbase = encodeUtf8 dbConf.dbname
+                  }
+              Nothing -> Nothing
+          in
           Right $ Wd.ResolvedApp {
               aid = appDef.uid
               , label = appDef.label
@@ -112,6 +124,7 @@ resolveAppDef wappConf fctResolver appDef =
               , rootPath = wappConf.waContentDir </> appDef.rootPath
               , libs = libRefs
               , functions = Mp.fromList (rights eiFcts)
+              , db = mbDbConf
             }
         fctErrs ->
           Left $ "Error resolving functions: " <> intercalate "\n" fctErrs

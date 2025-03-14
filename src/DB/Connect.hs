@@ -68,6 +68,7 @@ startPg dbC =
   liftIO . putStrLn $ "@[startPg] user: " <> show dbC.user <> " db: " <> show dbC.dbase <> "."
   ContT $ bracket (acquire dbC.poolSize dbC.acqTimeout dbC.poolTimeOut dbSettings) release
 
+
 startMql :: MqlDbConfig -> ContT r IO Msql.MySQLConn
 startMql dbC =
   let

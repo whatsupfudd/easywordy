@@ -18,8 +18,12 @@ import GHC.Generics ( Generic )
 
 import Data.Aeson ( FromJSON, Value, toJSON, encode )
 
+import Hasql.Pool (Pool)
+
 import Language.JavaScript.Inline
 import Language.JavaScript.Inline.Core
+
+import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
 
 import Wapp.Types (JSExecSupport(..))
 data JSReturn = JSReturn {
@@ -94,16 +98,35 @@ endJS :: Session -> IO ()
 endJS session = do
   closeSession session
 
-runElmFunction :: JSExecSupport -> Text -> Text -> Value -> IO JSReturn
-runElmFunction jsSupport moduleName functionName jsonParams = do
+
+runElmFunction :: JSExecSupport -> Maybe Pool -> Text -> Text -> Value -> IO JSReturn
+runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
+
   putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName
       <> ", functionName: " <> unpack functionName
       <> ", jsonParams: " <> show jsonParams
+
   let
+    libExec :: JSExecSupport -> JSVal -> IO LBS.ByteString
+    libExec jsSupport jsonParams = do
+      case mbDb of
+        Just dbPool -> do
+          eiPrez <- Ps.fetchPresentation dbPool "09c6bd60-61e1-4890-9f28-2d71248b2c51"
+          case eiPrez of
+            Left err -> do
+              putStrLn $ "@[libExec] error fetching presentation: " <> err
+              pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
+            Right prez -> do
+              -- putStrLn $ "@[libExec] presentation: " <> show prez
+              pure $ encode prez
+        Nothing -> pure "@[libExec]: no database pool"
+      -- putStrLn $ "@[libExec] jsonParams: " <> show jsonParams
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
     jsonParamsLBS = encode jsonParams
     jsElmModule = jsSupport.jsModule
+  jsLibExec <- export jsSupport.jsSession (libExec jsSupport)
+
   rezA <- eval jsSupport.jsSession [js|
       jsModName = "" + $mNameLBS
       const app = ($jsElmModule.default)['Elm'][jsModName].init({ "flags": { "locale" : "en" } })
@@ -118,21 +141,31 @@ runElmFunction jsSupport moduleName functionName jsonParams = do
         resolvePromise(JSON.parse(aValue))
       }
 
+      execHaskellFct = async (jsonParams) => {
+        console.warn("@[execHaskellFct] jsonParams: ", jsonParams)
+        const callParams = JSON.parse(jsonParams)
+        const tResult = await $jsLibExec(callParams)
+        const result = {"result": JSON.parse(tResult) }
+        const recipient = callParams.rcpt
+        app.ports.recvMsg && app.ports.recvMsg.send({ "event" : "return", "rcpt" : recipient, "params" : result })
+
+      }
+
       doTest = async (fctName) => {
-        app.ports.log && app.ports.log.subscribe(updateInternal)
+        app.ports.sendOutput && app.ports.sendOutput.subscribe(updateInternal)
         const jParams = JSON.parse($jsonParamsLBS + "")
         console.warn("@[runElmFunction] params: ", jParams)
-        app.ports.recvMsg && app.ports.recvMsg.send({ "fct" : fctName , "params" : jParams })
+        app.ports.sendMsg && app.ports.sendMsg.subscribe(execHaskellFct)
+        app.ports.recvMsg && app.ports.recvMsg.send({ "event" : "invoke", "fct" : fctName , "params" : jParams })
 
         const value = await innerVal
         return value
       }
-
       // For some reason, doing an op of the haskell-initiated variable makes it proper
       // JS instead of <Buffer ...>.
       const strFctName = "" + $fctNameLBS
       const result = await doTest(strFctName)
       return result    
-    |]
+  |]
   -- putStrLn $ "@[runElmFunction] done; rez: " <> show rezA
   evaluate rezA :: IO JSReturn

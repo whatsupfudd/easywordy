@@ -8,6 +8,7 @@ import Data.Text (Text)
 import qualified Data.Map as Mp
 import Data.UUID (UUID)
 
+import Hasql.Pool (Pool)
 import Wapp.AppDef (ResolvedApp, RoutingDictionary)
 import Wapp.FileWatcher (WatcherControl)
 
@@ -18,6 +19,7 @@ data LiveWapp = LiveWapp {
   , watcher :: Maybe WatcherControl
   , signaler :: TMVar ()
   , commChannel :: TVar FilePath
+  , db :: Maybe Pool
   }
 
 

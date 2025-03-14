@@ -19,6 +19,7 @@ import GHC.Generics (Generic)
 import qualified Hasql.Pool as Hp
 
 import qualified Options.Runtime as Rt
+import qualified DB.Connect as Db
 
 data AppDef = AppDef {
   uid :: UUID
@@ -27,9 +28,12 @@ data AppDef = AppDef {
   , rootPath :: FilePath
   , libs :: [ PairReference ]
   , functions :: [ FunctionDef ]
+  , db :: Maybe DbDef
  }
- deriving (Generic, Show)
+ deriving (Generic, Show, FromJSON)
 
+
+{-
 instance FromJSON AppDef where
   parseJSON (Object o) = AppDef
     <$> o .: "uid"
@@ -38,6 +42,7 @@ instance FromJSON AppDef where
     <*> o .: "rootPath"
     <*> o .: "libs"
     <*> o .: "functions"
+-}
 
 
 data FunctionDef = FunctionDef {
@@ -98,6 +103,14 @@ data ArgDef =
 
 type RoutingTable = Mp.Map Text RouteLogic
 
+data DbDef = DbDef {
+  dbname :: Text
+  , host :: Text
+  , user :: Text
+  , password :: Text
+  }
+  deriving (Generic, Show, FromJSON)
+
 
 data RouteLogic =
   ExecFileRL FilePath [ RouteArg ]
@@ -143,6 +156,7 @@ data ResolvedApp = ResolvedApp {
   , rootPath :: FilePath
   , libs :: [ PairReference ]
   , functions :: Mp.Map Text RouteLogic
+  , db :: Maybe Db.PgDbConfig
  }
  deriving (Show)
 

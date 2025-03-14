@@ -40,14 +40,16 @@ import Servant.API.Generic (ToServant)
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
 
-import Hasql.Pool (Pool)
+import qualified Hasql.Connection as DbC
+import Hasql.Pool (Pool, acquire)
 
 import qualified HttpSup.Types as Ht
-import Wapp.HtmxSupport
 import Api.Types (EasyVerseApp (..), AppEnv (..), Html (..))
 import qualified Options.Runtime as Rt
+import qualified DB.Connect as Db
 
 import WordPress.Wrapper (handlePhpRequest)
+import Wapp.HtmxSupport
 import Wapp.RouteDef (WappRoutes (..))
 
 import qualified Demo.DemoPage as Dmo
@@ -159,12 +161,20 @@ wsStreamInit appID conn = do
                 newCommChannel <- liftIO $ Cs.newTVarIO ""
                 newUpdateSignal <- liftIO $ Cs.newEmptyTMVarIO
                 newWatcher <- liftIO $ newWatcher appDef.rootPath newCommChannel newUpdateSignal
+                mbDb <- case appDef.db of
+                  Just dbConf ->
+                    let
+                      dbSettings = DbC.settings dbConf.host dbConf.port dbConf.user dbConf.passwd dbConf.dbase
+                    in do
+                    Just <$> liftIO (acquire dbConf.poolSize dbConf.acqTimeout dbConf.poolTimeOut dbSettings)
+                  Nothing -> pure Nothing
                 let
                   newApp = LiveWapp {
                     wapp = appDef
                     , watcher = Just newWatcher
                     , signaler = newUpdateSignal
                     , commChannel = newCommChannel
+                    , db = mbDb
                     }
                 let
                   newState = wState { cache = Mp.insert aUID newApp wState.cache }
