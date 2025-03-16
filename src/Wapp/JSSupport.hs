@@ -14,15 +14,17 @@ import qualified Data.ByteString as Bs
 import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as Tio
 import Data.Text.Encoding (encodeUtf8)
+import Data.UUID (UUID, fromString)
 import GHC.Generics ( Generic )
 
-import Data.Aeson ( FromJSON, Value, toJSON, encode )
+import Data.Aeson ( FromJSON, Value, toJSON, encode, object, (.=) )
 
 import Hasql.Pool (Pool)
 
 import Language.JavaScript.Inline
 import Language.JavaScript.Inline.Core
 
+import qualified Options.Runtime as Rt
 import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
 
 import Wapp.Types (JSExecSupport(..))
@@ -111,14 +113,21 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
     libExec jsSupport jsonParams = do
       case mbDb of
         Just dbPool -> do
-          eiPrez <- Ps.fetchPresentation dbPool "09c6bd60-61e1-4890-9f28-2d71248b2c51"
-          case eiPrez of
-            Left err -> do
-              putStrLn $ "@[libExec] error fetching presentation: " <> err
-              pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
-            Right prez -> do
-              -- putStrLn $ "@[libExec] presentation: " <> show prez
-              pure $ encode prez
+          case fromString "09c6bd60-61e1-4890-9f28-2d71248b2c51" of
+            Nothing -> do
+              pure $ "@[libExec] error parsing UUID: " <> "09c6bd60-61e1-4890-9f28-2d71248b2c51"
+            Just prezId ->
+              let
+                aValue = object [ "eid" .= prezId ]
+              in do
+              eiPrez <- Ps.fetchPresentation dbPool (aValue, Nothing)
+              case eiPrez of
+                Left err -> do
+                  putStrLn $ "@[libExec] error fetching presentation: " <> err
+                  pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
+                Right prez -> do
+                  -- putStrLn $ "@[libExec] presentation: " <> show prez
+                  pure prez
         Nothing -> pure "@[libExec]: no database pool"
       -- putStrLn $ "@[libExec] jsonParams: " <> show jsonParams
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName

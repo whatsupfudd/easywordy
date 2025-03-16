@@ -5,8 +5,10 @@ module Wapp.Apps.Scenario.Presentation.Types where
 
 import Control.Applicative
 
+import Data.Int (Int32)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text, unpack, pack)
+import Data.UUID (UUID)
 
 import GHC.Generics
 import Data.Aeson ((.:), (.:?), (.=))
@@ -15,8 +17,9 @@ import qualified Data.Aeson.Types as Ae
 
 
 -- | Root level project container.
-data Presentation = Presentation { 
-    metadataP :: PrezMetadata
+data Presentation = Presentation {
+    uidP :: Int32
+    , metadataP :: PrezMetadata
     , scenarioP :: Scenario
   }
   deriving (Show, Eq, Generic)
@@ -29,8 +32,8 @@ instance Ae.ToJSON Presentation where
 
 -- | Presentation metadata information.
 data PrezMetadata = PrezMetadata {
-    namePM :: Text
-  , idPM :: Text
+    idPM :: UUID
+  , namePM :: Text
   , notesPM :: Text
   , localesPM :: [Text]
   , resourcesPM :: [Resource]
@@ -45,7 +48,7 @@ instance Ae.ToJSON PrezMetadata where
 -- | Resources (images, videos, etc) being associated with an internal ID for quick reference
 -- in the rest of the content.
 data Resource = Resource {
-    idR :: Text
+    idR :: UUID
   , contentR :: ResourceContent
   }
   deriving (Show, Eq, Generic)
@@ -88,7 +91,7 @@ instance Ae.ToJSON Scene where
 -- | Act: a set actors/props situation, where we get dialogues, props manipulation. It
 -- also defines the camera and lighting.
 data Act = Act {
-    idA :: Text
+    idA :: UUID
   , actionsA :: [Action]
   }
   deriving (Show, Eq, Generic)

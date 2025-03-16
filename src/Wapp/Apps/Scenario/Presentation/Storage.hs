@@ -1,4 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Wapp.Apps.Scenario.Presentation.Storage where
 
@@ -11,6 +13,9 @@ import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Data.Time.Clock (NominalDiffTime, nominalDiffTimeToSeconds)
 
+import GHC.Generics (Generic)
+import qualified Data.Aeson as Ae
+
 import Hasql.Session (Session, ResultError, statement, sql)
 import Hasql.Pool (Pool, use)
 import qualified Hasql.TH as TH
@@ -18,6 +23,8 @@ import qualified Hasql.Encoders as He
 import qualified Hasql.Decoders as Hd
 
 import Wapp.Apps.Scenario.Presentation.Types
+import Wapp.AppDef (NativeLibFunction)
+import Data.UUID (UUID)
 
 storePresentation :: Pool -> Presentation -> IO (Either String ())
 storePresentation dbPool prez = do
@@ -49,7 +56,7 @@ createNewPresentation prez =
   statement (md.idPM, md.namePM, md.notesPM) [TH.singletonStatement|
     insert into
       presentations (eid, pname, notes)
-      values ($1::text, $2::text, $3::text)
+      values ($1::uuid, $2::text, $3::text)
     returning uid::int4
   |]
 
@@ -67,7 +74,7 @@ createResources prjId resources =
       statement (prjId, rz.idR, resourceEnum rz.contentR, resourceContent rz.contentR) [TH.singletonStatement|
         insert into resources
           (prez_fk, eid, kind, content)
-          values ($1::int4, $2::text, $3::text::resource_type, $4::text)
+          values ($1::int4, $2::uuid, $3::text::resource_type, $4::text)
       |]
     ) resources
 
@@ -124,12 +131,12 @@ createAct sceneID seqNbr act = do
   mapM_ (uncurry (createAction actID)) (zip [1..] act.actionsA)
 
 
-createNewAct :: Int32 -> Int32 -> Text -> Session Int32
+createNewAct :: Int32 -> Int32 -> UUID -> Session Int32
 createNewAct sceneID seqNbr actID =
   statement (sceneID, seqNbr, actID) [TH.singletonStatement|
     insert into acts
       (scene_fk, sequence_number, eid)
-      values ($1::int4, $2::int4, $3::text)
+      values ($1::int4, $2::int4, $3::uuid)
     returning uid::int4
   |]
 
@@ -206,25 +213,41 @@ createPropMoveDef manipID md =
   |]
 
 
-locatePresentation :: Text -> Session (Maybe Int32)
+locatePresentation :: UUID -> Session (Maybe Int32)
 locatePresentation eid =
   statement eid [TH.maybeStatement|
-    select uid::int4 from presentations where eid = $1::text
+    select uid::int4 from presentations where eid = $1::uuid
   |]
 
 
+newtype TmpPrezEid = TmpPrezEid {
+    eid :: UUID
+  }
+  deriving (Show, Eq, Generic, Ae.FromJSON)
+
+prezEidFromValue :: Ae.Value -> Either String TmpPrezEid
+prezEidFromValue aValue = case aValue of
+  Ae.Object obj -> case Ae.fromJSON aValue of
+    Ae.Success tmpPrezEid -> Right tmpPrezEid
+    Ae.Error err -> Left $ "@[prezEidFromValue] failed to parse presentation ID: " <> err <> "."
+  _ -> Left "@[prezEidFromValue] expected a JSON object with an 'eid' field."
 -- | Fetch a presentation by its external ID
-fetchPresentation :: Pool -> Text -> IO (Either String Presentation)
-fetchPresentation dbPool prezEid = do
-  result <- use dbPool $ do
-    maybePrezId <- locatePresentation prezEid
-    case maybePrezId of
-      Nothing -> pure Nothing
-      Just prezId -> findPresentation prezId
-  case result of
-    Left err -> pure (Left (show err))
-    Right Nothing -> pure (Left "Presentation not found")
-    Right (Just prez) -> pure (Right prez)
+-- fetchPresentation :: Pool -> Text -> IO (Either String Presentation)
+-- Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String Value)
+fetchPresentation :: NativeLibFunction
+fetchPresentation dbPool (value, mbLabel) = do
+  case prezEidFromValue value of
+    Left err -> pure (Left err)
+    Right prezEid -> do
+      result <- use dbPool $ do
+        maybePrezId <- locatePresentation prezEid.eid
+        case maybePrezId of
+          Nothing -> pure Nothing
+          Just prezId -> findPresentation prezId
+      case result of
+        Left err -> pure (Left (show err))
+        Right Nothing -> pure (Left "Presentation not found")
+        Right (Just prez) -> pure (Right $ Ae.encode prez)
 
 -- | Retrieve a complete presentation by its internal ID
 findPresentation :: Int32 -> Session (Maybe Presentation)
@@ -234,7 +257,7 @@ findPresentation prezId = do
     Nothing -> pure Nothing
     Just metadata -> do
       scenario <- fetchScenario prezId
-      pure $ Just $ Presentation metadata scenario
+      pure $ Just $ Presentation prezId metadata scenario
 
 -- | Find presentation metadata including locales and resources
 findPrezMetadata :: Int32 -> Session (Maybe PrezMetadata)
@@ -248,10 +271,10 @@ findPrezMetadata prezId = do
       pure . Just $ PrezMetadata idPM namePM notesPM (V.toList localesPM) resourcesPM
 
 -- | Find basic presentation data (id, name, notes)
-findPrezBaseData :: Int32 -> Session (Maybe (Text, Text, Text))
+findPrezBaseData :: Int32 -> Session (Maybe (UUID, Text, Text))
 findPrezBaseData prezId =
   statement prezId [TH.maybeStatement|
-    select eid::text, pname::text, notes::text
+    select eid::uuid, pname::text, notes::text
     from presentations
     where uid = $1::int4
   |]
@@ -270,13 +293,13 @@ fetchLocales prezId =
 fetchResources :: Int32 -> Session [Resource]
 fetchResources prezId =
   toResourceList <$> statement prezId [TH.vectorStatement|
-    select eid::text, kind::text, content::text
+    select eid::uuid, kind::text, content::text
     from resources
     where prez_fk = $1::int4
     order by uid
   |]
   where
-    toResourceList :: Vector (Text, Text, Text) -> [Resource]
+    toResourceList :: Vector (UUID, Text, Text) -> [Resource]
     toResourceList = V.toList . V.map (\(eid, kind, content) ->
       Resource eid (parseResourceContent kind content))
 
@@ -325,7 +348,7 @@ fetchScene sceneId = do
 fetchActs :: Int32 -> Session [Act]
 fetchActs sceneId = do
   actDetails <- statement sceneId [TH.vectorStatement|
-    select uid::int4, eid::text
+    select uid::int4, eid::uuid
     from acts
     where scene_fk = $1::int4
     order by sequence_number

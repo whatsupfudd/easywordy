@@ -132,6 +132,7 @@ instance Show RouteFunction where
 
 type InternalArgs = (Value, Maybe Text)
 type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String FunctionReply)
+type NativeLibFunction = Hp.Pool -> InternalArgs -> IO (Either String Lbs.ByteString)
 type ExternalFunction = (Text, Text, Text)
 
 

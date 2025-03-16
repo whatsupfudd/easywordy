@@ -51,6 +51,8 @@ library
       Routing.TopHandlers
       ServeApi
       Wapp.AppDef
+      Wapp.Apps.Scenario.Presentation.DbContainers
+      Wapp.Apps.Scenario.Presentation.DbOps
       Wapp.Apps.Scenario.Presentation.Storage
       Wapp.Apps.Scenario.Presentation.Types
       Wapp.Apps.Scenario.Prez

@@ -9,9 +9,10 @@ import qualified WordPress.Functions as Wpf
 import qualified Wapp.Apps.Z14L.Logic as Cl
 import qualified Wapp.Apps.Z14L.Video as Cv
 import qualified Wapp.Apps.Scenario.Prez as Sc
+import qualified Wapp.Apps.Scenario.Presentation.DbOps as Sc
 
 type LibraryMap = Mp.Map Text (Mp.Map Text Wd.InternalFunction)
-
+type NativeLibMap = Mp.Map Text (Mp.Map Text Wd.NativeLibFunction)
 
 buildInternalLibrary :: LibraryMap
 buildInternalLibrary = Mp.fromList [  
@@ -28,4 +29,12 @@ buildInternalLibrary = Mp.fromList [
     , ("internal.scenario", Mp.fromList [
       ("browsePrez", Sc.browsePrez)
     ])
+  ]
+
+buildNativeLibrary :: NativeLibMap
+buildNativeLibrary = Mp.fromList [
+  ("scenario.prez", Mp.fromList [
+    ("getTopLevelPrez", Sc.getTopLevelPrez)
+    , ("getActsForPrez", Sc.getActsForPrez)
+  ])
   ]
