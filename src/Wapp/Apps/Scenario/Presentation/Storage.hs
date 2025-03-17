@@ -53,7 +53,7 @@ createNewPresentation prez =
   let
     md = prez.metadataP
   in
-  statement (md.idPM, md.namePM, md.notesPM) [TH.singletonStatement|
+  statement (md.eidPM, md.namePM, md.notesPM) [TH.singletonStatement|
     insert into
       presentations (eid, pname, notes)
       values ($1::uuid, $2::text, $3::text)

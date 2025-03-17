@@ -17,7 +17,8 @@ import Data.Text.Encoding (encodeUtf8)
 import Data.UUID (UUID, fromString)
 import GHC.Generics ( Generic )
 
-import Data.Aeson ( FromJSON, Value, toJSON, encode, object, (.=) )
+import qualified Data.Aeson as Ae
+-- import Data.Aeson ( FromJSON, ToJSON, Value, toJSON, fromJSON, encode, decode, object, (.=), eitherDecode )
 
 import Hasql.Pool (Pool)
 
@@ -26,13 +27,14 @@ import Language.JavaScript.Inline.Core
 
 import qualified Options.Runtime as Rt
 import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
+import qualified Wapp.Apps.Scenario.Presentation.DbOps as Pt
 
 import Wapp.Types (JSExecSupport(..))
 data JSReturn = JSReturn {
     result :: Text
     , content :: Text
   }
-  deriving (Generic, Show, FromJSON)
+  deriving (Generic, Show, Ae.FromJSON)
   deriving FromJS via (Aeson JSReturn)
 
 
@@ -101,7 +103,16 @@ endJS session = do
   closeSession session
 
 
-runElmFunction :: JSExecSupport -> Maybe Pool -> Text -> Text -> Value -> IO JSReturn
+data ExecParams = ExecParams {
+  action :: Text
+  , rcpt :: Text
+  , params :: Ae.Value
+  }
+  deriving (Show, Generic, Ae.FromJSON, Ae.ToJSON)
+  deriving (FromJS, ToJS) via (Aeson ExecParams)
+
+
+runElmFunction :: JSExecSupport -> Maybe Pool -> Text -> Text -> Ae.Value -> IO JSReturn
 runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
 
   putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName
@@ -109,30 +120,42 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
       <> ", jsonParams: " <> show jsonParams
 
   let
-    libExec :: JSExecSupport -> JSVal -> IO LBS.ByteString
-    libExec jsSupport jsonParams = do
+    libExec :: JSExecSupport -> ExecParams -> IO LBS.ByteString
+    libExec jsSupport execParams =
       case mbDb of
         Just dbPool -> do
-          case fromString "09c6bd60-61e1-4890-9f28-2d71248b2c51" of
-            Nothing -> do
-              pure $ "@[libExec] error parsing UUID: " <> "09c6bd60-61e1-4890-9f28-2d71248b2c51"
-            Just prezId ->
-              let
-                aValue = object [ "eid" .= prezId ]
-              in do
-              eiPrez <- Ps.fetchPresentation dbPool (aValue, Nothing)
-              case eiPrez of
+          case execParams.action of
+            "getActsForPrez" -> do
+              eiActs <- Pt.getActsForPrez dbPool (execParams.params, Nothing)
+              case eiActs of
                 Left err -> do
-                  putStrLn $ "@[libExec] error fetching presentation: " <> err
+                  putStrLn $ "@[libExec] error fetching acts: " <> err
                   pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
-                Right prez -> do
-                  -- putStrLn $ "@[libExec] presentation: " <> show prez
-                  pure prez
+                Right rez -> do
+                  putStrLn $ "@[libExec] acts: " <> show rez
+                  pure rez
+            _ -> do
+              putStrLn $ "@[libExec] jsParams: " <> show execParams
+              case fromString "09c6bd60-61e1-4890-9f28-2d71248b2c51" of
+                Nothing -> do
+                  pure $ "@[libExec] error parsing UUID: " <> "09c6bd60-61e1-4890-9f28-2d71248b2c51"
+                Just prezId ->
+                  let
+                    aValue = Ae.object [ "eid" Ae..= prezId ]
+                  in do
+                  eiPrez <- Ps.fetchPresentation dbPool (aValue, Nothing)
+                  case eiPrez of
+                    Left err -> do
+                      putStrLn $ "@[libExec] error fetching presentation: " <> err
+                      pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
+                    Right prez -> do
+                      -- putStrLn $ "@[libExec] presentation: " <> show prez
+                      pure prez
         Nothing -> pure "@[libExec]: no database pool"
       -- putStrLn $ "@[libExec] jsonParams: " <> show jsonParams
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
-    jsonParamsLBS = encode jsonParams
+    jsonParamsLBS = Ae.encode jsonParams
     jsElmModule = jsSupport.jsModule
   jsLibExec <- export jsSupport.jsSession (libExec jsSupport)
 

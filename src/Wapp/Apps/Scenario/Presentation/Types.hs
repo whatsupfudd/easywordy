@@ -32,7 +32,7 @@ instance Ae.ToJSON Presentation where
 
 -- | Presentation metadata information.
 data PrezMetadata = PrezMetadata {
-    idPM :: UUID
+    eidPM :: UUID
   , namePM :: Text
   , notesPM :: Text
   , localesPM :: [Text]
