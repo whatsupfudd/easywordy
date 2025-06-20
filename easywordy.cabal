@@ -50,7 +50,11 @@ library
       Routing.TopDef
       Routing.TopHandlers
       ServeApi
+      Utils.Json
       Wapp.AppDef
+      Wapp.Apps.Aox.Logic
+      Wapp.Apps.Aox.Test
+      Wapp.Apps.Aox.Types
       Wapp.Apps.Scenario.Presentation.DbContainers
       Wapp.Apps.Scenario.Presentation.DbOps
       Wapp.Apps.Scenario.Presentation.Storage
@@ -86,6 +90,7 @@ library
       php
   build-depends:
       aeson
+    , aoxsup
     , base >=4.7 && <5
     , binary
     , blaze-html
@@ -165,6 +170,7 @@ executable easywordy
       php
   build-depends:
       aeson
+    , aoxsup
     , base >=4.7 && <5
     , binary
     , blaze-html
@@ -246,6 +252,7 @@ test-suite easywordy-test
       php
   build-depends:
       aeson
+    , aoxsup
     , base >=4.7 && <5
     , binary
     , blaze-html

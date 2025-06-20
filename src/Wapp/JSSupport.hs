@@ -27,9 +27,11 @@ import Language.JavaScript.Inline.Core
 
 import qualified Options.Runtime as Rt
 import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
+import qualified Wapp.Apps.Aox.Logic as Aox
 import qualified Wapp.Apps.Scenario.Presentation.DbOps as Pt
 
 import Wapp.Types (JSExecSupport(..))
+
 data JSReturn = JSReturn {
     result :: Text
     , content :: Text
@@ -121,7 +123,8 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
 
   let
     libExec :: JSExecSupport -> ExecParams -> IO LBS.ByteString
-    libExec jsSupport execParams =
+    libExec jsSupport execParams = do
+      putStrLn $ "@[libExec] execParams: " <> show execParams
       case mbDb of
         Just dbPool -> do
           case execParams.action of
@@ -134,11 +137,22 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
                 Right rez -> do
                   putStrLn $ "@[libExec] acts: " <> show rez
                   pure rez
+            "getUserMailboxes" -> do
+              eiActs <- Aox.getUserMailboxes dbPool (execParams.params, Nothing)
+              case eiActs of
+                Left err -> do
+                  putStrLn $ "@[libExec] error fetching acts: " <> err
+                  pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
+                Right rez -> do
+                  -- putStrLn $ "@[libExec] acts: " <> show rez
+                  pure rez
             _ -> do
+              let
+                fakeUuid = "c909e59a-e2f0-41d1-ac70-932dea279823"
               putStrLn $ "@[libExec] jsParams: " <> show execParams
-              case fromString "09c6bd60-61e1-4890-9f28-2d71248b2c51" of
+              case fromString fakeUuid of
                 Nothing -> do
-                  pure $ "@[libExec] error parsing UUID: " <> "09c6bd60-61e1-4890-9f28-2d71248b2c51"
+                  pure $ "@[libExec] error parsing UUID: " <> (LBS.fromStrict . encodeUtf8 . pack) fakeUuid
                 Just prezId ->
                   let
                     aValue = Ae.object [ "eid" Ae..= prezId ]
@@ -147,7 +161,7 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
                   case eiPrez of
                     Left err -> do
                       putStrLn $ "@[libExec] error fetching presentation: " <> err
-                      pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
+                      pure $ "ERROR: " <> (LBS.fromStrict . encodeUtf8 . pack) err
                     Right prez -> do
                       -- putStrLn $ "@[libExec] presentation: " <> show prez
                       pure prez
@@ -183,7 +197,7 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
 
       }
 
-      doTest = async (fctName) => {
+      invokeElm = async (fctName) => {
         app.ports.sendOutput && app.ports.sendOutput.subscribe(updateInternal)
         const jParams = JSON.parse($jsonParamsLBS + "")
         console.warn("@[runElmFunction] params: ", jParams)
@@ -196,7 +210,7 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
       // For some reason, doing an op of the haskell-initiated variable makes it proper
       // JS instead of <Buffer ...>.
       const strFctName = "" + $fctNameLBS
-      const result = await doTest(strFctName)
+      const result = await invokeElm(strFctName)
       return result    
   |]
   -- putStrLn $ "@[runElmFunction] done; rez: " <> show rezA

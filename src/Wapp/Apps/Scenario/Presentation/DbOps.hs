@@ -69,7 +69,7 @@ getActsForPrez dbPool (value, mbLabel) =
           select
             count(*)::int4
           from
-            scenes a
+            acts a
             join scenarios s on a.scenario_fk = s.uid
             join presentations p on s.prez_fk = p.uid
           where p.eid = $1::uuid
@@ -82,7 +82,7 @@ getActsForPrez dbPool (value, mbLabel) =
               select
                 a.uid::int4, a.sequence_number::int4, a.created_at::timestamptz
               from
-                scenes a
+                acts a
                 join scenarios s on a.scenario_fk = s.uid
                 join presentations p on s.prez_fk = p.uid
               where

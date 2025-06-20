@@ -113,6 +113,8 @@ dependencies:
   - fsnotify
   # For scenario support:
   - profunctors
+  # For Aox:
+  - aoxsup
 
 
 default-extensions:

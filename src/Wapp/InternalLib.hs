@@ -10,6 +10,7 @@ import qualified Wapp.Apps.Z14L.Logic as Cl
 import qualified Wapp.Apps.Z14L.Video as Cv
 import qualified Wapp.Apps.Scenario.Prez as Sc
 import qualified Wapp.Apps.Scenario.Presentation.DbOps as Sc
+import qualified Wapp.Apps.Aox.Test as Aop
 
 type LibraryMap = Mp.Map Text (Mp.Map Text Wd.InternalFunction)
 type NativeLibMap = Mp.Map Text (Mp.Map Text Wd.NativeLibFunction)
@@ -28,6 +29,9 @@ buildInternalLibrary = Mp.fromList [
     ])
     , ("internal.scenario", Mp.fromList [
       ("browsePrez", Sc.browsePrez)
+    ])
+    , ("internal.aox", Mp.fromList [
+      ("getUserMailboxes", Aop.getUserMailboxes)
     ])
   ]
 

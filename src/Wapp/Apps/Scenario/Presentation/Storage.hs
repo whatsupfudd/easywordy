@@ -97,7 +97,7 @@ resourceContent rez = case rez of
 createScenario :: Int32 -> Scenario -> Session ()
 createScenario prjID scenario = do
   scenarioID <- createNewScenario prjID
-  mapM_ (uncurry (createScene scenarioID)) (zip [1..] scenario.scenesS)
+  mapM_ (uncurry (createAct scenarioID)) (zip [1..] scenario.actsS)
 
 
 createNewScenario :: Int32 -> Session Int32
@@ -110,32 +110,33 @@ createNewScenario prjId =
   |]
 
 
-createScene :: Int32 -> Int32 -> Scene -> Session ()
-createScene scenarioID seqNbr scene = do
-  sceneID <- createNewScene scenarioID seqNbr
-  mapM_ (uncurry (createAct scenarioID)) (zip [1..] scene.actsS)
+createAct :: Int32 -> Int32 -> Act -> Session ()
+createAct scenarioID seqNbr act = do
+  actID <- createNewAct scenarioID seqNbr
+  mapM_ (uncurry (createScene actID)) (zip [1..] act.scenesA)
 
 
-createNewScene :: Int32 -> Int32 -> Session Int32
-createNewScene scenarioID seqNbr =
+createNewAct :: Int32 -> Int32 -> Session Int32
+createNewAct scenarioID seqNbr =
   statement (scenarioID, seqNbr) [TH.singletonStatement|
-    insert into scenes
+    insert into acts
       (scenario_fk, sequence_number)
       values ($1::int4, $2::int4)
     returning uid::int4
   |]
 
-createAct :: Int32 -> Int32 -> Act -> Session ()
-createAct sceneID seqNbr act = do
-  actID <- createNewAct sceneID seqNbr act.idA
-  mapM_ (uncurry (createAction actID)) (zip [1..] act.actionsA)
+
+createScene :: Int32 -> Int32 -> Scene -> Session ()
+createScene actID seqNbr scene = do
+  sceneID <- createNewScene actID seqNbr scene.idS
+  mapM_ (uncurry (createAction sceneID)) (zip [1..] scene.actionsS)
 
 
-createNewAct :: Int32 -> Int32 -> UUID -> Session Int32
-createNewAct sceneID seqNbr actID =
-  statement (sceneID, seqNbr, actID) [TH.singletonStatement|
-    insert into acts
-      (scene_fk, sequence_number, eid)
+createNewScene :: Int32 -> Int32 -> UUID -> Session Int32
+createNewScene actID seqNbr eid =
+  statement (actID, seqNbr, eid) [TH.singletonStatement|
+    insert into scenes
+      (act_fk, sequence_number, eid)
       values ($1::int4, $2::int4, $3::uuid)
     returning uid::int4
   |]
@@ -153,7 +154,7 @@ createNewAction :: Int32 -> Int32 -> Text -> Session Int32
 createNewAction actID seqNbr kind =
   statement (actID, seqNbr, kind) [TH.singletonStatement|
     insert into actions
-      (act_fk, sequence_number, kind)
+      (scene_fk, sequence_number, kind)
       values ($1::int4, $2::int4, $3::text::action_type)
     returning uid::int4
   |]
@@ -315,8 +316,8 @@ parseResourceContent _ content = ImageRC content -- Default case
 fetchScenario :: Int32 -> Session Scenario
 fetchScenario prezId = do
   scenarioId <- findScenarioId prezId
-  scenes <- fetchScenes scenarioId
-  pure $ Scenario scenes
+  acts <- fetchActs scenarioId
+  pure $ Scenario acts
 
 -- | Find scenario ID for a presentation
 findScenarioId :: Int32 -> Session Int32
@@ -327,35 +328,35 @@ findScenarioId prezId =
     where prez_fk = $1::int4
   |]
 
--- | Fetch all scenes for a scenario
-fetchScenes :: Int32 -> Session [Scene]
-fetchScenes scenarioId = do
-  sceneIds <- statement scenarioId [TH.vectorStatement|
+-- | Fetch all acts for a scenario
+fetchActs :: Int32 -> Session [Act]
+fetchActs scenarioId = do
+  actIds <- statement scenarioId [TH.vectorStatement|
     select uid::int4
-    from scenes
+    from acts
     where scenario_fk = $1::int4
     order by sequence_number
   |]
-  mapM fetchScene (V.toList sceneIds)
+  mapM fetchAct (V.toList actIds)
 
--- | Fetch a single scene with its acts
-fetchScene :: Int32 -> Session Scene
-fetchScene sceneId = do
-  acts <- fetchActs sceneId
-  pure $ Scene acts
+-- | Fetch a single act with its scenes
+fetchAct :: Int32 -> Session Act
+fetchAct actId = do
+  scenes <- fetchScenes actId
+  pure $ Act scenes
 
--- | Fetch all acts for a scene
-fetchActs :: Int32 -> Session [Act]
-fetchActs sceneId = do
-  actDetails <- statement sceneId [TH.vectorStatement|
+-- | Fetch all scenes for an act
+fetchScenes :: Int32 -> Session [Scene]
+fetchScenes actId = do
+  sceneDetails <- statement actId [TH.vectorStatement|
     select uid::int4, eid::uuid
-    from acts
-    where scene_fk = $1::int4
+    from scenes
+    where act_fk = $1::int4
     order by sequence_number
   |]
-  mapM (\(actId, actEid) -> do
-    actions <- fetchActions actId
-    pure $ Act actEid actions) (V.toList actDetails)
+  mapM (\(sceneId, sceneEid) -> do
+    actions <- fetchActions sceneId
+    pure $ Scene sceneEid actions) (V.toList sceneDetails)
 
 -- | Fetch all actions for an act
 fetchActions :: Int32 -> Session [Action]
@@ -363,7 +364,7 @@ fetchActions actId = do
   actionDetails <- statement actId [TH.vectorStatement|
     select uid::int4, kind::text
     from actions
-    where act_fk = $1::int4
+    where scene_fk = $1::int4
     order by sequence_number
   |]
   mapM fetchActionContent (V.toList actionDetails)

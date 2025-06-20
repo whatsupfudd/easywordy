@@ -150,7 +150,7 @@ fetchFiles rtOpts pgDb (jsonParams, _) =
               Right (Just (versionID, folderPath)) -> do
                 H.a H.! A.class_ "text-blue-900 dark:text-blue-300"
                     H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
-                    H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_folders_1\", \"args\":\"version=" <> T.pack (show versionID) <> "\"}") $ H.toHtml ("UP" :: Text)
+                    H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_folders_1\", \"params\":{\"versionID\":" <> T.pack (show versionID) <> "}}") $ H.toHtml ("UP" :: Text)
                 H.div H.! A.class_ "mx-4text-sm text-gray-900 dark:text-gray-300" $ H.toHtml (if folderPath == "" then "wp_root" else "> wp_root/" <> folderPath)
               _ -> H.toHtml ("<i>No folder</i>" :: Text)
             response =  H.div H.! A.id "mainContainer" $ do
@@ -196,7 +196,7 @@ fetchFileDetails rtOpts pgDb (jsonParams, _) =
           Right (Just (folderID, fileName, folderPath)) -> do
             H.a H.! A.class_ "text-blue-900 dark:text-blue-300"
                 H.! X.wsSend "" H.! X.hxTarget "#mainContainer" H.! X.hxSwap "outerHtml"
-                H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_files_1\", \"args\":\"folder=" <> T.pack (show folderID) <> "\"}") $ H.toHtml ("UP" :: Text)
+                H.! X.hxHeaders (Bli.textValue $ "{\"mid\":\"wp_files_1\", \"params\":{\"folderID\":" <> T.pack (show folderID) <> "}}") $ H.toHtml ("UP" :: Text)
             H.div H.! A.class_ "mx-4text-sm text-gray-900 dark:text-gray-300" $ H.toHtml ("> wp_root/" <> folderPath <> "/" <> fileName)
           _ -> H.toHtml ("<i>No folder</i>" :: Text)
 

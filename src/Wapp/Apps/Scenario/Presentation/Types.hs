@@ -15,6 +15,8 @@ import Data.Aeson ((.:), (.:?), (.=))
 import qualified Data.Aeson as Ae
 import qualified Data.Aeson.Types as Ae
 
+import Utils.Json (cutFieldP1, cutFieldP2)
+
 
 -- | Root level project container.
 data Presentation = Presentation {
@@ -68,7 +70,7 @@ data ResourceContent =
 
 -- | Scenario representing the full presentation flow.
 newtype Scenario = Scenario { 
-    scenesS :: [Scene]
+    actsS :: [Act]
   }
   deriving (Show, Eq, Generic)
 instance Ae.FromJSON Scenario where
@@ -78,26 +80,26 @@ instance Ae.ToJSON Scenario where
 
 
 -- | Scene: a collection of acts where actors & props are stable.
-newtype Scene = Scene {
-    actsS :: [Act]
-  }
-  deriving (Show, Eq, Generic)
-instance Ae.FromJSON Scene where
-  parseJSON = Ae.genericParseJSON cutFieldP1
-instance Ae.ToJSON Scene where
-  toJSON = Ae.genericToJSON cutFieldP1
-
-
--- | Act: a set actors/props situation, where we get dialogues, props manipulation. It
--- also defines the camera and lighting.
-data Act = Act {
-    idA :: UUID
-  , actionsA :: [Action]
+newtype Act = Act {
+    scenesA :: [Scene]
   }
   deriving (Show, Eq, Generic)
 instance Ae.FromJSON Act where
   parseJSON = Ae.genericParseJSON cutFieldP1
 instance Ae.ToJSON Act where
+  toJSON = Ae.genericToJSON cutFieldP1
+
+
+-- | Act: a set actors/props situation, where we get dialogues, props manipulation. It
+-- also defines the camera and lighting.
+data Scene = Scene {
+    idS :: UUID
+  , actionsS :: [Action]
+  }
+  deriving (Show, Eq, Generic)
+instance Ae.FromJSON Scene where
+  parseJSON = Ae.genericParseJSON cutFieldP1
+instance Ae.ToJSON Scene where
   toJSON = Ae.genericToJSON cutFieldP1
 
 
@@ -208,15 +210,3 @@ instance Ae.FromJSON Manipulation where
 instance Ae.ToJSON Manipulation where
   toJSON (LogicMN logic) = Ae.object ["logic" .= logic]
   toJSON (PropMoveMN movement) = Ae.object ["propMove" .= movement]
-
-
-cutFieldP1 :: Ae.Options
-cutFieldP1 = Ae.defaultOptions {
-    Ae.fieldLabelModifier = init
-  }
-
-cutFieldP2 :: Ae.Options
-cutFieldP2 = Ae.defaultOptions {
-    Ae.fieldLabelModifier = init . init
-  }
-

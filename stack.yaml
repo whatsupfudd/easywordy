@@ -62,6 +62,7 @@ extra-deps:
   - ../../../Haskell/OpenAI/LocalLibs/openai-client
   - ../../../Haskell/OpenAI/LocalLibs/openai-client/openai-gen
   - ../../../Haskell/OpenAI/LocalLibs/hs-connection
+  - ../Wapp/Lib/Natives/Aox
 
 #  - servant-docs
 #  - servant-foreign

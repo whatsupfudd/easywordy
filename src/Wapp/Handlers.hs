@@ -18,6 +18,7 @@ import qualified Data.ByteString.Lazy as Lbs
 import qualified Data.ByteString.Lazy.Char8 as Bs
 import qualified Data.List as L
 import qualified Data.Map as Mp
+import qualified Data.Maybe as Mb
 import qualified Data.Set as St
 import Prelude as P
 import Data.Text (Text)
@@ -26,6 +27,9 @@ import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import qualified Data.UUID as Uu
 import qualified Data.UUID.V4 as Uu
 import qualified Network.WebSockets as WS
+
+import Data.Int (Int32)
+import qualified Data.Vector as Vc
 
 import System.FSNotify
 import System.FilePath ((</>), takeDirectory, takeExtension, takeFileName)
@@ -41,7 +45,11 @@ import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
 
 import qualified Hasql.Connection as DbC
-import Hasql.Pool (Pool, acquire)
+import qualified Hasql.Session as DbS
+import qualified Hasql.Statement as DbS
+import qualified Hasql.Encoders as DbE
+import qualified Hasql.Decoders as DbD
+import Hasql.Pool (Pool, acquire, use)
 
 import qualified HttpSup.Types as Ht
 import Api.Types (EasyVerseApp (..), AppEnv (..), Html (..))
@@ -166,6 +174,7 @@ wsStreamInit appID conn = do
                     let
                       dbSettings = DbC.settings dbConf.host dbConf.port dbConf.user dbConf.passwd dbConf.dbase
                     in do
+                    liftIO . putStrLn $ "@[wsStreamInit] acquiring db pool, " <> (T.unpack . decodeUtf8) dbConf.host <> ", user: " <>(T.unpack . decodeUtf8) dbConf.user <> ", db:" <> (T.unpack . decodeUtf8) dbConf.dbase
                     Just <$> liftIO (acquire dbConf.poolSize dbConf.acqTimeout dbConf.poolTimeOut dbSettings)
                   Nothing -> pure Nothing
                 let
@@ -188,7 +197,8 @@ wsStreamInit appID conn = do
   handleClient rtOpts pgDb execCtxt = do
     -- TODO: handle the case with a empty list of libs.
     let
-      refEnv = ReferenceEnv rtOpts pgDb Mp.empty execCtxt.liveApp.signaler execCtxt.liveApp.commChannel
+      dbPool = Mb.fromMaybe pgDb execCtxt.liveApp.db
+      refEnv = ReferenceEnv rtOpts dbPool Mp.empty execCtxt.liveApp.signaler execCtxt.liveApp.commChannel
     putStrLn $ "@[handleClient] starting new session: " <> show execCtxt.session.idSE
     (result, finalCtxt, messageSet) <- Rws.runRWST startClientSession refEnv execCtxt
     putStrLn $ "@[handleClient] ending session: " <> show execCtxt.session.idSE
