@@ -18,10 +18,10 @@ import System.FilePath.Posix ((</>))
 import qualified Data.Yaml as Y
 
 import qualified Options.Runtime as Rt
-import Wapp.InternalLib (buildInternalLibrary, LibraryMap)
 import qualified DB.Connect as Db
 import qualified Wapp.Types as Wt
 import qualified Wapp.AppDef as Wd
+import Wapp.InternalLib (buildInternalLibrary)
 
 
 loadAppDefs :: Rt.WappConfig -> IO (Either String Wd.RoutingDictionary)
@@ -62,14 +62,14 @@ loadAppDefs wappConf = do
       return $ Left errMsg
 
 
-defaultFctResolver :: LibraryMap -> Wd.FctResolver
+defaultFctResolver :: Wd.LibraryMap -> Wd.FctResolver
 defaultFctResolver localLibs = Wd.FctResolver {
   resolveLib = Right
   , resolveFct = functionResolver localLibs
   }
 
 
-functionResolver :: LibraryMap -> Mp.Map Text Text -> Wd.FunctionDef -> Either String (Text, Wd.RouteLogic)
+functionResolver :: Wd.LibraryMap -> Mp.Map Text Text -> Wd.FunctionDef -> Either String (Text, Wd.RouteLogic)
 functionResolver localLibs libs fctDef =
   case fctDef.action of
     Wd.FileVerbatimAD filePath ->

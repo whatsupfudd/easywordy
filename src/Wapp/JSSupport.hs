@@ -11,6 +11,7 @@ import Control.Exception (evaluate)
 
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as Bs
+import qualified Data.Map as Mp
 import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as Tio
 import Data.Text.Encoding (encodeUtf8)
@@ -35,6 +36,7 @@ import Wapp.Types (JSExecSupport(..))
 data JSReturn = JSReturn {
     result :: Text
     , content :: Text
+    , container :: Maybe Text
   }
   deriving (Generic, Show, Ae.FromJSON)
   deriving FromJS via (Aeson JSReturn)
@@ -106,7 +108,8 @@ endJS session = do
 
 
 data ExecParams = ExecParams {
-  action :: Text
+  package :: Text
+  , action :: Text
   , rcpt :: Text
   , params :: Ae.Value
   }
@@ -127,45 +130,47 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
       putStrLn $ "@[libExec] execParams: " <> show execParams
       case mbDb of
         Just dbPool -> do
-          case execParams.action of
-            "getActsForPrez" -> do
-              eiActs <- Pt.getActsForPrez dbPool (execParams.params, Nothing)
-              case eiActs of
-                Left err -> do
-                  putStrLn $ "@[libExec] error fetching acts: " <> err
-                  pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
-                Right rez -> do
-                  putStrLn $ "@[libExec] acts: " <> show rez
-                  pure rez
-            "getUserMailboxes" -> do
-              eiActs <- Aox.getUserMailboxes dbPool (execParams.params, Nothing)
-              case eiActs of
-                Left err -> do
-                  putStrLn $ "@[libExec] error fetching acts: " <> err
-                  pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
-                Right rez -> do
-                  -- putStrLn $ "@[libExec] acts: " <> show rez
-                  pure rez
-            _ -> do
-              let
-                fakeUuid = "c909e59a-e2f0-41d1-ac70-932dea279823"
-              putStrLn $ "@[libExec] jsParams: " <> show execParams
-              case fromString fakeUuid of
-                Nothing -> do
-                  pure $ "@[libExec] error parsing UUID: " <> (LBS.fromStrict . encodeUtf8 . pack) fakeUuid
-                Just prezId ->
-                  let
-                    aValue = Ae.object [ "eid" Ae..= prezId ]
-                  in do
-                  eiPrez <- Ps.fetchPresentation dbPool (aValue, Nothing)
-                  case eiPrez of
+          case Mp.lookup execParams.package jsSupport.hsLibs of
+            Just lib -> do
+              case Mp.lookup execParams.action lib of
+                Just fct -> do
+                  eiActs <- fct dbPool (execParams.params, Nothing)
+                  case eiActs of
                     Left err -> do
-                      putStrLn $ "@[libExec] error fetching presentation: " <> err
-                      pure $ "ERROR: " <> (LBS.fromStrict . encodeUtf8 . pack) err
-                    Right prez -> do
-                      -- putStrLn $ "@[libExec] presentation: " <> show prez
-                      pure prez
-        Nothing -> pure "@[libExec]: no database pool"
+                      putStrLn $ "@[libExec] error fetching acts: " <> err
+                      pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
+                    Right rez -> do
+                      putStrLn $ "@[libExec] acts: " <> show rez
+                      pure rez
+                Nothing ->
+                  pure $ "@[libExec] package " <> (LBS.fromStrict . encodeUtf8) execParams.package <> ", action not found: " <> (LBS.fromStrict . encodeUtf8) execParams.action
+                  {-- TMP: fake a fetchPresentation call, for app z14l.
+                  do
+                  let
+                    fakeUuid = "c909e59a-e2f0-41d1-ac70-932dea279823"
+                  putStrLn $ "@[libExec] jsParams: " <> show execParams
+                  case fromString fakeUuid of
+                    Nothing -> do
+                      pure $ "@[libExec] error parsing UUID: " <> (LBS.fromStrict . encodeUtf8 . pack) fakeUuid
+                    Just prezId ->
+                      let
+                        aValue = Ae.object [ "eid" Ae..= prezId ]
+                      in do
+                      eiPrez <- Ps.fetchPresentation dbPool (aValue, Nothing)
+                      case eiPrez of
+                        Left err -> do
+                          putStrLn $ "@[libExec] error fetching presentation: " <> err
+                          pure $ "ERROR: " <> (LBS.fromStrict . encodeUtf8 . pack) err
+                        Right prez -> do
+                          -- putStrLn $ "@[libExec] presentation: " <> show prez
+                          pure prez
+                  -}
+            Nothing -> do
+              putStrLn $ "@[libExec] package not found: " <> unpack execParams.package
+              pure $ "@[libExec] package not found: " <> (LBS.fromStrict . encodeUtf8) execParams.package
+        Nothing -> do
+          putStrLn "@[libExec]: no database pool"
+          pure "@[libExec]: no database pool"
       -- putStrLn $ "@[libExec] jsonParams: " <> show jsonParams
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName

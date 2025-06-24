@@ -55,6 +55,9 @@ library
       Wapp.Apps.Aox.Logic
       Wapp.Apps.Aox.Test
       Wapp.Apps.Aox.Types
+      Wapp.Apps.GnuHealth.Logic
+      Wapp.Apps.GnuHealth.Opers
+      Wapp.Apps.GnuHealth.Types
       Wapp.Apps.Scenario.Presentation.DbContainers
       Wapp.Apps.Scenario.Presentation.DbOps
       Wapp.Apps.Scenario.Presentation.Storage

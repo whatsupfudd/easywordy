@@ -26,7 +26,8 @@ import Language.JavaScript.Inline as Js
 import qualified Hasql.Pool as Hp
 
 import qualified Options.Runtime as Rt
-import Wapp.AppDef (ResolvedApp)
+import qualified Wapp.AppDef as Wd
+import Wapp.AppDef (ResolvedApp, NativeLibFunction)
 import Wapp.HtmxSupport (HxWsMessage)
 import qualified Wapp.State as Ws
 
@@ -68,6 +69,7 @@ type JsExecBlock = (HxWsMessage, Text, Value)
 data JSExecSupport = JSExecSupport {
     jsSession :: Js.Session
   , jsModule :: Js.JSVal
+  , hsLibs :: Wd.NativeLibMap
   }
 
 

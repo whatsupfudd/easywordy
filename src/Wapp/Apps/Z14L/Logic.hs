@@ -55,9 +55,12 @@ receiveMsg :: Wd.InternalFunction
 receiveMsg rtOpts pgDb (jsonParams, content) = do
   case rtOpts.openai.apiKey of
     Nothing ->
-      pure . Right . Wd.AppendChildFR $ renderHtml $
-        H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
-          H.toHtml ("No OPENAI api key" :: Text)
+      let
+        response = renderHtml $
+          H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
+            H.toHtml ("No OPENAI api key" :: Text)
+      in
+      pure . Right $ Wd.BasicFR (response, Nothing)
     Just aKey ->
       {-
       pure . Right $ Bs.toStrict . renderHtml $
@@ -65,9 +68,12 @@ receiveMsg rtOpts pgDb (jsonParams, content) = do
       -}
       case content of
         Nothing ->
-          pure . Right . Wd.AppendChildFR $ renderHtml $
-            H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
-              H.toHtml ("Need some content to send to AI" :: Text)
+          let
+            response = renderHtml $
+              H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
+                H.toHtml ("Need some content to send to AI" :: Text)
+          in
+          pure . Right $ Wd.BasicFR (response, Nothing)
         Just aText ->
           let
             oaiContext = Simple aKey (fromMaybe "gpt-4o-mini" rtOpts.openai.model)
@@ -80,15 +86,21 @@ receiveMsg rtOpts pgDb (jsonParams, content) = do
           rezA <- think $ Chat action oaiContext
           endTime <- getZonedTime
           case rezA of
-            Left errMsg -> do
+            Left errMsg ->
+              let
+                response = renderHtml $
+                  H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
+                    H.toHtml errMsg
+              in do
               putStrLn $ "@[receiveMsg] err: " <> show errMsg
-              pure . Right . Wd.AppendChildFR $ renderHtml $
-                H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
-                  H.toHtml errMsg
-            Right (TextResult reply) -> do
+              pure . Right $ Wd.AppendChildFR (response, Nothing)
+            Right (TextResult reply) ->
+              let
+                response = renderHtml $
+                  mapM_ showMessageR (buildMessages (aText, startTime) (reply, endTime))
+              in do
               putStrLn $ "@[receiveMsg] reply: " <> show reply
-              pure . Right . Wd.AppendChildFR $ renderHtml $
-                mapM_ showMessageR (buildMessages (aText, startTime) (reply, endTime))
+              pure . Right $ Wd.AppendChildFR (response, Nothing)
 
 
 

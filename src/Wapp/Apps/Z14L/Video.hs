@@ -43,12 +43,18 @@ startSession :: Wd.InternalFunction
 startSession rtOpts pgDb (jsonParams, content) = do
   rezA <- fetchConvURL rtOpts
   case rezA of
-    Left err -> do
-      pure . Right . Wd.BasicFR $ renderHtml $
-        H.h2 H.! A.class_ "text-2xl font-bold" $ H.text ("Avatar error: " <>  pack err)
-    Right convURL -> do
-      pure . Right . Wd.BasicFR $ renderHtml $
-        showResult convURL
+    Left err ->
+      let
+        response = renderHtml $
+          H.h2 H.! A.class_ "text-2xl font-bold" $ H.text ("Avatar error: " <>  pack err)
+      in
+      pure . Right $ Wd.BasicFR (response, Nothing)
+    Right convURL ->
+      let
+        response = renderHtml $
+          showResult convURL
+      in
+      pure . Right $ Wd.BasicFR (response, Nothing)
 
 {-
 The Tavus API uses the following format (provide as Javascript code):

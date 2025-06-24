@@ -32,6 +32,7 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
   case Mp.lookup anID execCtxt.liveApp.wapp.functions of
     Nothing -> do
       putStrLn $ "@[routeRequest] templatePath not found: " <> show anID
+      -- putStrLn $ "@[routeRequest] fct map: " <> show execCtxt.liveApp.wapp.functions
       pure . Left $ "ERROR: templatePath not found: " <> T.unpack anID
     Just (Wd.ExecFileRL templatePath _) -> do
       putStrLn $ "@[routeRequest] templatePath: " <> templatePath
@@ -43,7 +44,7 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
           pure . Left $ "ERROR: error reading file: " <> show (err :: SomeException)
         Right response -> do
           -- putStrLn $ "@[routeRequest] sending " <> show (Lbs.length response) <> " bytes."
-          pure . Right $ Wd.BasicFR response
+          pure . Right $ Wd.BasicFR (response, Nothing)
     Just (Wd.FunctionRL fetchFunc) -> do
       putStrLn $ "@[routeRequest] function: " <> T.unpack anID
       -- The 'fmap fromStrict' creates the monadic converter, and the '<$>' applies it
@@ -66,6 +67,6 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
                   putStrLn "@[routeRequest] Jss.runElmFunction finished."
                   case jsReturn.result of
                     "ok" ->
-                      pure . Right $ Wd.BasicFR $ Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content
+                      pure . Right $ Wd.BasicFR (Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content, jsReturn.container)
                     "err" ->
                       pure . Left $ "ERROR: " <> T.unpack jsReturn.content

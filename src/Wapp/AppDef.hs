@@ -135,11 +135,18 @@ type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either S
 type NativeLibFunction = Hp.Pool -> InternalArgs -> IO (Either String Lbs.ByteString)
 type ExternalFunction = (Text, Text, Text)
 
+-- Map of packages = Map of Internal function name -> Haskell function (defined as Function: <package>: function_name in app yaml definition). 
+type LibraryMap = Mp.Map Text (Mp.Map Text InternalFunction)
+
+-- Map of packages, each package -> map of hsForward name -> Haskell function:
+type NativeLibMap = Mp.Map Text (Mp.Map Text NativeLibFunction)
+
+
 
 data FunctionReply =
-  BasicFR Lbs.ByteString
-  | AppendChildFR Lbs.ByteString
-  | AfterEndFR Lbs.ByteString
+  BasicFR (Lbs.ByteString, Maybe Text)
+  | AppendChildFR (Lbs.ByteString, Maybe Text)
+  | AfterEndFR (Lbs.ByteString, Maybe Text)
  deriving (Generic, Show)
 
 

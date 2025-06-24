@@ -18,6 +18,9 @@ import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
 
 
 browsePrez :: Wd.InternalFunction
-browsePrez rtOpts pgDb (jsonParams, content) = do
-  pure . Right . Wd.BasicFR $ renderHtml $
-    H.h2 H.! A.class_ "text-2xl font-bold" $ H.text "Test"
+browsePrez rtOpts pgDb (jsonParams, content) =
+  let
+    response = renderHtml $
+      H.h2 H.! A.class_ "text-2xl font-bold" $ H.text "Test"
+  in
+  pure . Right $ Wd.BasicFR (response, Nothing)

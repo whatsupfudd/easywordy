@@ -64,6 +64,7 @@ import qualified Demo.DemoPage as Dmo
 import qualified Wapp.Registry as Wr
 
 import qualified Wapp.JSSupport as Jss
+import qualified Wapp.InternalLib as ILib
 import Wapp.WsRouter (routeRequest)
 import Wapp.FileWatcher (WatcherControl (..), newWatcher)
 import Wapp.Types (
@@ -136,7 +137,7 @@ wsStreamInit appID conn = do
           anIdent -> do
             (jsSession, jsModule) <- do
               liftIO $ Jss.initJS (aLiveApp.wapp.rootPath </> T.unpack anIdent) firstLib.label
-            pure $ Just $ JSExecSupport jsSession jsModule
+            pure $ Just $ JSExecSupport jsSession jsModule ILib.buildNativeLibrary
         let
           newContext = ClientContext {
             liveApp = aLiveApp
@@ -257,7 +258,7 @@ wsStreamInit appID conn = do
                     when (execCtxt.liveApp.wapp.rootPath </> T.unpack anIdent == aPath) $ do
                       (!jsSession, !jsModule) <- liftIO $ Jss.initJS aPath firstLib.label
                       let
-                        newContext = execCtxt { jsSupport = Just $ JSExecSupport jsSession jsModule }
+                        newContext = execCtxt { jsSupport = Just $ JSExecSupport jsSession jsModule ILib.buildNativeLibrary }
                       Rws.put newContext
                       case execCtxt.actionList of
                         [] -> pure ()
@@ -274,11 +275,13 @@ wsStreamInit appID conn = do
                                 target = case hxMsg.headers.target of
                                   Just aValue -> "id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\""
                                   Nothing -> ""
-                                (modifiers, body) = case aReply of
-                                  BasicFR aHtml -> ("", aHtml)
-                                  AppendChildFR aHtml -> ("hx-swap-oob=\"beforeend\"", aHtml)
-                                  AfterEndFR aHtml -> ("hx-swap-oob=\"afterend\"", aHtml)
-                                response = "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
+                                (modifiers, body, mbContainer) = case aReply of
+                                  BasicFR (aHtml, mbText) -> ("", aHtml, mbText)
+                                  AppendChildFR (aHtml, mbText) -> ("hx-swap-oob=\"beforeend\"", aHtml, mbText)
+                                  AfterEndFR (aHtml, mbText) -> ("hx-swap-oob=\"afterend\"", aHtml, mbText)
+                                response = case mbContainer of
+                                  Nothing -> "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
+                                  Just customEle -> "<" <> (Bs.fromStrict . encodeUtf8) customEle <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</" <> (Bs.fromStrict . encodeUtf8) customEle <> ">"
                               in
                               liftIO $ WS.sendTextData conn response
               OutOfBandReplyAE aMsg -> do
@@ -330,11 +333,13 @@ wsStreamInit appID conn = do
                             target = case hxMsg.headers.target of
                               Just aValue -> "id=\"" <> (Bs.fromStrict . encodeUtf8) aValue <> "\""
                               Nothing -> ""
-                            (modifiers, body) = case aReply of
-                              BasicFR aHtml -> ("", aHtml)
-                              AppendChildFR aHtml -> ("hx-swap-oob=\"beforeend\"", aHtml)
-                              AfterEndFR aHtml -> ("hx-swap-oob=\"afterend\"", aHtml)
-                            response = "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
+                            (modifiers, body, mbContainer) = case aReply of
+                              BasicFR (aHtml, mbText) -> ("", aHtml, mbText)
+                              AppendChildFR (aHtml, mbText) -> ("hx-swap-oob=\"beforeend\"", aHtml, mbText)
+                              AfterEndFR (aHtml, mbText) -> ("hx-swap-oob=\"afterend\"", aHtml, mbText)
+                            response = case mbContainer of
+                                  Nothing -> "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
+                                  Just customEle -> "<" <> (Bs.fromStrict . encodeUtf8) customEle <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</" <> (Bs.fromStrict . encodeUtf8) customEle <> ">"
                           in
                           liftIO $ WS.sendTextData conn response
               Just aText ->

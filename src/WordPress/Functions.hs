@@ -56,9 +56,9 @@ fetchVersions :: Wd.InternalFunction
 fetchVersions rtOpts pgDb (jsonParams, _) = do
   rezA <- getVersions pgDb
   case rezA of
-    Left err -> pure . Right . Wd.BasicFR $ renderHtml $ H.div
+    Left err -> pure . Right $ Wd.BasicFR (renderHtml $ H.div
         H.! A.id "mainContainer"
-        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
+        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err, Nothing)
     Right versions ->
       let
         response =  H.div H.! A.id "mainContainer" $
@@ -81,7 +81,7 @@ fetchVersions rtOpts pgDb (jsonParams, _) = do
                   H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
                 ) versions
       in
-      pure . Right . Wd.BasicFR $ renderHtml response
+      pure . Right $ Wd.BasicFR (renderHtml response, Nothing)
 
 
 fetchFolders :: Wd.InternalFunction
@@ -92,15 +92,15 @@ fetchFolders rtOpts pgDb (jsonParams, _) =
       Ae.Error errMsg -> Left errMsg
   in
   case eiVersionParams of
-    Left errMsg -> pure . Right . Wd.BasicFR $ renderHtml $ H.div
+    Left errMsg -> pure . Right $ Wd.BasicFR (renderHtml $ H.div
         H.! A.id "mainContainer"
-        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
+        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg, Nothing)
     Right folderArgs -> do
       rezA <- getFoldersForVersion pgDb folderArgs.versionID
       case rezA of
-        Left err -> pure . Right . Wd.BasicFR . renderHtml $ H.div
-          H.! A.id "mainContainer"
-          H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
+        Left err -> pure . Right $ Wd.BasicFR (renderHtml $ H.div
+            H.! A.id "mainContainer"
+            H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err, Nothing)
         Right versions ->
           let
             response =  H.div H.! A.id "mainContainer" $
@@ -123,7 +123,7 @@ fetchFolders rtOpts pgDb (jsonParams, _) =
                       H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
                     ) versions
           in
-          pure . Right . Wd.BasicFR $ renderHtml response
+          pure . Right $ Wd.BasicFR (renderHtml response, Nothing)
 
 
 fetchFiles :: Wd.InternalFunction
@@ -134,16 +134,16 @@ fetchFiles rtOpts pgDb (jsonParams, _) =
       Ae.Error errMsg -> Left errMsg
   in
   case eiFolderParams of
-    Left errMsg -> pure . Right . Wd.BasicFR . renderHtml $ H.div
+    Left errMsg -> pure . Right $ Wd.BasicFR (renderHtml $ H.div
         H.! A.id "mainContainer"
-        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
+        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg, Nothing)
     Right folderParams -> do
       rezA <- getFilesForFolder pgDb folderParams.folderID
       rezB <- getFolderDetailsForID pgDb folderParams.folderID
       case rezA of
-        Left err -> pure . Right . Wd.BasicFR . renderHtml $ H.div
+        Left err -> pure . Right $ Wd.BasicFR (renderHtml $ H.div
             H.! A.id "mainContainer"
-            H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err
+            H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml err, Nothing)
         Right files ->
           let
             folderPointer = case rezB of
@@ -173,7 +173,7 @@ fetchFiles rtOpts pgDb (jsonParams, _) =
                       H.td H.! A.class_ "px-6 py-4" $ H.toHtml uid
                     ) files
           in
-          pure . Right . Wd.BasicFR $ renderHtml response
+          pure . Right $ Wd.BasicFR (renderHtml response, Nothing)
 
 
 fetchFileDetails :: Wd.InternalFunction
@@ -184,9 +184,9 @@ fetchFileDetails rtOpts pgDb (jsonParams, _) =
       Ae.Error errMsg -> Left errMsg
   in
   case eiFileParams of
-    Left errMsg -> pure . Right . Wd.BasicFR . renderHtml $ H.div
+    Left errMsg -> pure . Right $ Wd.BasicFR (renderHtml $ H.div
         H.! A.id "mainContainer"
-        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg
+        H.! A.class_ "text-gray-900 dark:text-gray-100" $ H.toHtml errMsg, Nothing)
     Right fileParams -> do
       rezA <- getAstForFile pgDb fileParams.fileID
       rezB <- getConstantsForFile pgDb fileParams.fileID
@@ -201,30 +201,32 @@ fetchFileDetails rtOpts pgDb (jsonParams, _) =
           _ -> H.toHtml ("<i>No folder</i>" :: Text)
 
       case (rezA, rezB) of
-        (Left err, _) -> pure . Right . Wd.BasicFR . renderHtml $
-            H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
-        (_, Left err) -> pure . Right . Wd.BasicFR . renderHtml $
-            H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err
+        (Left err, _) -> pure . Right $ Wd.BasicFR (renderHtml $
+            H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err, Nothing)
+        (_, Left err) -> pure . Right $ Wd.BasicFR (renderHtml $
+            H.div H.! A.id "mainContainer" H.! A.class_ "text-gray-900 dark:text-gray-300" $ H.toHtml err, Nothing)
         (Right (Just ast), Right (Just constants)) ->
           let
             derefedAst = printAst ast constants
+            response = renderHtml $ H.div H.! A.id "mainContainer" $ do
+              folderPointer
+              derefedAst
           in
-          pure . Right . Wd.BasicFR . renderHtml $ H.div H.! A.id "mainContainer" $ do
-            folderPointer
-            derefedAst
+          pure . Right $ Wd.BasicFR (response, Nothing)
         _ -> do
           rezErr <- getErrorForFile pgDb fileParams.fileID
           case rezErr of
-            Left err -> pure . Right . Wd.BasicFR . renderHtml $
-              H.div H.! A.id "mainContainer" H.! A.class_ "mx-4 text-gray-900 dark:text-gray-300" $ H.toHtml err
+            Left err -> pure . Right $ Wd.BasicFR (renderHtml $
+              H.div H.! A.id "mainContainer" H.! A.class_ "mx-4 text-gray-900 dark:text-gray-300" $ H.toHtml err, Nothing)
             Right (Just (errMsg, procTime)) ->
-              pure . Right . Wd.BasicFR . renderHtml $ do
+              pure . Right $ Wd.BasicFR (renderHtml $ do
                 H.div H.! A.id "mainContainer" H.! A.class_ "p-4 text-gray-900 dark:text-gray-300" $ do
                   folderPointer
                   H.br
                   H.toHtml ("Error: " <> errMsg)
                   H.br
                   H.toHtml ("Proc time: " <> T.pack (show procTime) <> "s" :: Text)
+                , Nothing)
 
 
 printAst :: Bs.ByteString -> Bs.ByteString -> H.Html

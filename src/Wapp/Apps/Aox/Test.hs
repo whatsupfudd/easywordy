@@ -18,16 +18,22 @@ getUserMailboxes :: Wd.InternalFunction
 getUserMailboxes rtOpts pgDb (jsonParams, content) = do
   rezA <- Aop.getUserMailboxes pgDb "hugo_akra"
   case rezA of
-    Left err -> do
-      pure . Right . Wd.BasicFR $ renderHtml $
-        H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
-          H.toHtml ("@[getUserMailboxes] error: " <> T.pack err :: Text)
-    Right mailboxes -> do
+    Left err ->
+      let
+        response = renderHtml $
+          H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
+            H.toHtml ("@[getUserMailboxes] error: " <> T.pack err :: Text)
+      in
+      pure . Right $ Wd.BasicFR (response, Nothing)
+    Right mailboxes ->
+      let
+        response = renderHtml $
+          H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
+            H.div H.! A.class_ "bg-gray-50 dark:bg-gray-900 p-4 md:ml-64 lg:mr-16 min-h-full pt-20" $
+              showMailbox True mailboxes
+      in
       -- putStrLn $ "@[getUserMailboxes] mailboxes : " <> show mailboxes
-      pure . Right . Wd.BasicFR $ renderHtml $
-        H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
-          H.div H.! A.class_ "bg-gray-50 dark:bg-gray-900 p-4 md:ml-64 lg:mr-16 min-h-full pt-20" $
-            showMailbox True mailboxes
+      pure . Right $ Wd.BasicFR (response, Nothing)
 
 
 showMailbox :: Bool -> Aop.MapMailbox -> H.Html
