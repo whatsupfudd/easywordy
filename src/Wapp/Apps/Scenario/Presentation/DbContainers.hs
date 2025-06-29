@@ -21,7 +21,7 @@ data TopLevelPrez = TopLevelPrez {
   , labelTLP :: Text
   , notesTLP :: Text
   , createdAtTLP :: UTCTime
-  , updatedAtTLP :: UTCTime
+  -- , updatedAtTLP :: UTCTime
   }
   deriving (Show, Generic, FromJSON)
 

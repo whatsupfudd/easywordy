@@ -42,6 +42,7 @@ buildNativeLibrary = Mp.fromList [
   ("scenario.prez", Mp.fromList [
     ("getTopLevelPrez", Sc.getTopLevelPrez)
     , ("getActsForPrez", Sc.getActsForPrez)
+    , ("getFullPrezTree", Sc.getFullPrezTree)
   ])
   , ("aox.mb", Mp.fromList [
     ("getUserMailboxes", Aop.getUserMailboxes)
