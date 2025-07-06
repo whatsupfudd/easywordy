@@ -13,6 +13,7 @@ import qualified Data.Text.Encoding as T
 import System.FilePath.Posix ((</>))
 
 import qualified Data.Aeson as Ae
+import qualified Data.Aeson.KeyMap as Km
 
 import Hasql.Pool (Pool)
 
@@ -27,8 +28,8 @@ import qualified Wapp.AppDef as Wd
 import Wapp.State (LiveWapp (..))
 import Wapp.Types
 
-routeRequest :: ReferenceEnv -> ClientContext -> HxWsMessage -> Text -> Ae.Value -> IO (Either String Wd.FunctionReply)
-routeRequest refEnv execCtxt hxMsg anID jsonParams =
+routeRequest :: ReferenceEnv -> ClientContext -> HxWsMessage -> Text -> Wd.RequestParams -> IO (Either String Wd.FunctionReply)
+routeRequest refEnv execCtxt hxMsg anID requestParams =
   case Mp.lookup anID execCtxt.liveApp.wapp.functions of
     Nothing -> do
       putStrLn $ "@[routeRequest] templatePath not found: " <> show anID
@@ -51,14 +52,14 @@ routeRequest refEnv execCtxt hxMsg anID jsonParams =
       -- into the IO instance.
       case fetchFunc of
         Wd.Internal fct ->
-          fct refEnv.runOpts refEnv.pgPool (jsonParams, hxMsg.content)
+          fct refEnv.runOpts refEnv.pgPool (requestParams, hxMsg.content)
         Wd.External (libPath, moduleName,fctName) ->
           case execCtxt.jsSupport of
             Nothing -> do
               putStrLn "@[routeRequest] no jsSupport."
               pure . Left $ "ERROR: no jsSupport."
             Just jsSupport -> do
-              rezA <- try $ Jss.runElmFunction jsSupport execCtxt.liveApp.db moduleName fctName jsonParams
+              rezA <- try $ Jss.runElmFunction jsSupport execCtxt.liveApp.db moduleName fctName requestParams
               case rezA of
                 Left err -> do
                   putStrLn $ "@[routeRequest] Jss.runElmFunction err: " <> show (err :: SomeException)

@@ -72,7 +72,7 @@ import Wapp.Types (
           , Status (..), ReferenceEnv (..), AppContext
           , JSExecSupport (..), AppEvent (..), ClientMessage (..))
 import Wapp.AppDef (RoutingTable, RouteArg (..), ResolvedApp (..)
-          , PairReference (..), FunctionReply (..))
+          , PairReference (..), FunctionReply (..), RequestParams (..))
 import Wapp.State (User (..), UserProfile (..), fakeSession, WappState (..), Session (..), LiveWapp (..))
 
 
@@ -262,9 +262,9 @@ wsStreamInit appID conn = do
                       Rws.put newContext
                       case execCtxt.actionList of
                         [] -> pure ()
-                        (hxMsg, anID, jsonParams) : _ -> do
+                        (hxMsg, anID, requestParams) : _ -> do
                           liftIO . putStrLn $ "@[clientIteration] replay last action."
-                          rezA <- liftIO $ routeRequest refEnv newContext hxMsg anID jsonParams
+                          rezA <- liftIO $ routeRequest refEnv newContext hxMsg anID requestParams
                           case rezA of
                             Left errMsg ->
                               liftIO $ do
@@ -315,14 +315,13 @@ wsStreamInit appID conn = do
                     liftIO $ WS.sendTextData conn  ("<div class=\"text-red\"> NO MID</div>" :: Bs.ByteString)
                   Just anID ->
                     let
-                      jsonParams = case hxMsg.headers.params of
-                        Nothing -> Ae.Object Aek.empty
-                        Just params -> params
+                      requestParams = RequestParams { hxParamsRP = hxMsg.headers.params, formFieldsRP = hxMsg.formFields }
                     in do
                       let
-                        newAction = (hxMsg, anID, jsonParams)
+                        newAction = (hxMsg, anID, requestParams)
                       Rws.modify $ \execCtxt -> execCtxt { actionList = newAction : execCtxt.actionList }
-                      rezA <- liftIO $ routeRequest refEnv execCtxt hxMsg anID jsonParams
+                      liftIO $ putStrLn $ "@[processIncomingMessage] requestParams: " <> show requestParams
+                      rezA <- liftIO $ routeRequest refEnv execCtxt hxMsg anID requestParams
                       case rezA of
                         Left errMsg ->
                           liftIO $ do

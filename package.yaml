@@ -29,6 +29,9 @@ dependencies:
   - vector
   # For Map, ...:
   - containers
+  # For HashMap (misc JSON field decoding)
+  - unordered-containers
+
   # For YAML (config file):
   - yaml
   - directory

@@ -58,6 +58,8 @@ library
       Wapp.Apps.GnuHealth.Logic
       Wapp.Apps.GnuHealth.Opers
       Wapp.Apps.GnuHealth.Types
+      Wapp.Apps.KnowDocs.DbContainers
+      Wapp.Apps.KnowDocs.DbOps
       Wapp.Apps.Scenario.Presentation.DbContainers
       Wapp.Apps.Scenario.Presentation.DbOps
       Wapp.Apps.Scenario.Presentation.Storage
@@ -148,6 +150,7 @@ library
     , text
     , time
     , unix
+    , unordered-containers
     , uuid
     , vector
     , wai
@@ -229,6 +232,7 @@ executable easywordy
     , text
     , time
     , unix
+    , unordered-containers
     , uuid
     , vector
     , wai
@@ -311,6 +315,7 @@ test-suite easywordy-test
     , text
     , time
     , unix
+    , unordered-containers
     , uuid
     , vector
     , wai

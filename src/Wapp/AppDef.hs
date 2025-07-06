@@ -10,7 +10,7 @@ import qualified Data.Map as Mp
 import Data.Text (Text, unpack, pack)
 import Data.UUID (UUID)
 
-import Data.Aeson (FromJSON (..), Value (..), (.:), (.:?), (.!=), parseIndexedJSON, withText)
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (..), (.:), (.:?), (.!=), parseIndexedJSON, withText, genericToJSON)
 import qualified Data.Aeson.KeyMap as Ak
 import qualified Data.Aeson.Key as Ak
 
@@ -20,6 +20,8 @@ import qualified Hasql.Pool as Hp
 
 import qualified Options.Runtime as Rt
 import qualified DB.Connect as Db
+import qualified Wapp.HtmxSupport as Hx
+import qualified Utils.Json as Uj
 
 data AppDef = AppDef {
   uid :: UUID
@@ -130,9 +132,24 @@ instance Show RouteFunction where
     External _ -> "External"
 
 
-type InternalArgs = (Value, Maybe Text)
-type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String FunctionReply)
-type NativeLibFunction = Hp.Pool -> InternalArgs -> IO (Either String Lbs.ByteString)
+data RequestParams = RequestParams {
+    hxParamsRP :: Maybe Value
+    , formFieldsRP :: Maybe Value
+  }
+  deriving (Show, Generic)
+
+instance FromJSON RequestParams where
+  parseJSON (Object obj) = RequestParams <$> obj .:? "jsonParams" <*> obj .:? "formFields"
+  parseJSON _ = fail "Expected JSON Object for RequestParams"
+
+instance ToJSON RequestParams where
+  toJSON = genericToJSON Uj.cutFieldP2
+
+
+type ClientArgs = (RequestParams, Maybe Text)
+type NativeFctArgs = (Value, Maybe Text)
+type InternalFunction = Rt.RunOptions -> Hp.Pool -> ClientArgs -> IO (Either String FunctionReply)
+type NativeLibFunction = Hp.Pool -> NativeFctArgs -> IO (Either String Lbs.ByteString)
 type ExternalFunction = (Text, Text, Text)
 
 -- Map of packages = Map of Internal function name -> Haskell function (defined as Function: <package>: function_name in app yaml definition). 

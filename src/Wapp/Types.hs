@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE LambdaCase #-}
 module Wapp.Types where
 
 import qualified Control.Monad.RWS.Lazy as Rws
@@ -27,7 +24,7 @@ import qualified Hasql.Pool as Hp
 
 import qualified Options.Runtime as Rt
 import qualified Wapp.AppDef as Wd
-import Wapp.AppDef (ResolvedApp, NativeLibFunction)
+import Wapp.AppDef (ResolvedApp, NativeLibFunction, RequestParams)
 import Wapp.HtmxSupport (HxWsMessage)
 import qualified Wapp.State as Ws
 
@@ -64,7 +61,7 @@ data ClientContext = ClientContext {
   , actionList :: [ JsExecBlock ]
   }
 
-type JsExecBlock = (HxWsMessage, Text, Value)
+type JsExecBlock = (HxWsMessage, Text, RequestParams)
 
 data JSExecSupport = JSExecSupport {
     jsSession :: Js.Session

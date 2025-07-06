@@ -19,6 +19,7 @@ import Data.UUID (UUID, fromString)
 import GHC.Generics ( Generic )
 
 import qualified Data.Aeson as Ae
+import qualified Data.Aeson.KeyMap as Ak
 -- import Data.Aeson ( FromJSON, ToJSON, Value, toJSON, fromJSON, encode, decode, object, (.=), eitherDecode )
 
 import Hasql.Pool (Pool)
@@ -30,6 +31,8 @@ import qualified Options.Runtime as Rt
 import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
 import qualified Wapp.Apps.Aox.Logic as Aox
 import qualified Wapp.Apps.Scenario.Presentation.DbOps as Pt
+import qualified Wapp.AppDef as Wd
+
 
 import Wapp.Types (JSExecSupport(..))
 
@@ -117,12 +120,12 @@ data ExecParams = ExecParams {
   deriving (FromJS, ToJS) via (Aeson ExecParams)
 
 
-runElmFunction :: JSExecSupport -> Maybe Pool -> Text -> Text -> Ae.Value -> IO JSReturn
-runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
+runElmFunction :: JSExecSupport -> Maybe Pool -> Text -> Text -> Wd.RequestParams -> IO JSReturn
+runElmFunction jsSupport mbDb moduleName functionName requestParams = do
 
   putStrLn $ "@[runElmFunction] starting, moduleName: " <> unpack moduleName
       <> ", functionName: " <> unpack functionName
-      <> ", jsonParams: " <> show jsonParams
+      <> ", requestParams: " <> show requestParams
 
   let
     libExec :: JSExecSupport -> ExecParams -> IO LBS.ByteString
@@ -174,7 +177,7 @@ runElmFunction jsSupport mbDb moduleName functionName jsonParams = do
       -- putStrLn $ "@[libExec] jsonParams: " <> show jsonParams
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
-    jsonParamsLBS = Ae.encode jsonParams
+    jsonParamsLBS = Ae.encode requestParams
     jsElmModule = jsSupport.jsModule
   jsLibExec <- export jsSupport.jsSession (libExec jsSupport)
 

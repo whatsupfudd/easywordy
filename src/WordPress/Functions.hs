@@ -4,6 +4,7 @@ module WordPress.Functions where
 
 import qualified Data.ByteString as Bs
 import qualified Data.ByteString.Lazy as Lbs
+import Data.Maybe (fromMaybe)
 import Data.Int (Int32)
 import qualified Data.Map as Mp
 import Data.Text (Text, pack)
@@ -28,6 +29,7 @@ import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 
 import qualified Options.Runtime as Rt
 import qualified Wapp.AppDef as Wd
+import Wapp.AppDef (RequestParams (..))
 
 import WordPress.Opers (getVersions, getFoldersForVersion, getFilesForFolder
           , getConstantsForFile, getAstForFile, getFileDetailsForID
@@ -53,7 +55,7 @@ newtype FileParams = FileParams {
 -- type InternalFunction = Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String FunctionReply)
 
 fetchVersions :: Wd.InternalFunction
-fetchVersions rtOpts pgDb (jsonParams, _) = do
+fetchVersions rtOpts pgDb (requestParams, _) = do
   rezA <- getVersions pgDb
   case rezA of
     Left err -> pure . Right $ Wd.BasicFR (renderHtml $ H.div
@@ -85,9 +87,9 @@ fetchVersions rtOpts pgDb (jsonParams, _) = do
 
 
 fetchFolders :: Wd.InternalFunction
-fetchFolders rtOpts pgDb (jsonParams, _) =
+fetchFolders rtOpts pgDb (requestParams, _) =
   let
-    eiVersionParams = case Ae.fromJSON jsonParams :: Ae.Result VersionParams of
+    eiVersionParams = case Ae.fromJSON (fromMaybe Ae.Null requestParams.hxParamsRP) :: Ae.Result VersionParams of
       Ae.Success aValue -> Right aValue
       Ae.Error errMsg -> Left errMsg
   in
@@ -127,9 +129,9 @@ fetchFolders rtOpts pgDb (jsonParams, _) =
 
 
 fetchFiles :: Wd.InternalFunction
-fetchFiles rtOpts pgDb (jsonParams, _) =
+fetchFiles rtOpts pgDb (requestParams, _) =
   let
-    eiFolderParams = case Ae.fromJSON jsonParams :: Ae.Result FolderParams of
+    eiFolderParams = case Ae.fromJSON (fromMaybe Ae.Null requestParams.hxParamsRP) :: Ae.Result FolderParams of
       Ae.Success aValue -> Right aValue
       Ae.Error errMsg -> Left errMsg
   in
@@ -177,9 +179,9 @@ fetchFiles rtOpts pgDb (jsonParams, _) =
 
 
 fetchFileDetails :: Wd.InternalFunction
-fetchFileDetails rtOpts pgDb (jsonParams, _) =
+fetchFileDetails rtOpts pgDb (requestParams, _) =
   let
-    eiFileParams = case Ae.fromJSON jsonParams :: Ae.Result FileParams of
+    eiFileParams = case Ae.fromJSON (fromMaybe Ae.Null requestParams.hxParamsRP) :: Ae.Result FileParams of
       Ae.Success aValue -> Right aValue
       Ae.Error errMsg -> Left errMsg
   in

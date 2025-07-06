@@ -82,14 +82,14 @@ getActsForPrez dbPool (value, mbLabel) =
           ieRezA <- use dbPool $
             H.statement (args.eid, args.offset, args.limit) [H.vectorStatement|
               select
-                a.uid::int4, a.sequence_number::int4, a.created_at::timestamptz
+                a.uid::int4, a.seqnbr::int4, a.created_at::timestamptz
               from
                 acts a
                 join scenarios s on a.scenario_fk = s.uid
                 join presentations p on s.prez_fk = p.uid
               where
                 p.eid = $1::uuid
-              order by sequence_number
+              order by a.seqnbr
               offset $2::int4 limit $3::int4
             |]
           case ieRezA of
@@ -208,9 +208,9 @@ getFullPrezTree dbPool (value, mbLabel) = do
         H.statement args.eidPE [H.vectorStatement|
           select
             b.uid::int4
-            , c.sequence_number::int4, c.eid::uuid, c.created_at::timestamptz
-            , d.sequence_number::int4, d.eid::uuid, d.created_at::timestamptz
-            , e.sequence_number::int4, e.uid::int4, e.kind::text, e.created_at::timestamptz
+            , c.seqnbr::int4, c.eid::uuid, c.created_at::timestamptz
+            , d.seqnbr::int4, d.eid::uuid, d.created_at::timestamptz
+            , e.seqnbr::int4, e.uid::int4, e.kind::text, e.created_at::timestamptz
             , f.uid::int4, f.actor::text, f.dtext::text, f.influence::text?
             , g.uid::int4, g.seqnbr::int4, g.kind::text, g.content::text, g.created_at::timestamptz
           from
@@ -224,9 +224,9 @@ getFullPrezTree dbPool (value, mbLabel) = do
           where a.eid = $1::uuid
           order by
             b.created_at
-            , c.sequence_number
-            , d.sequence_number
-            , e.sequence_number
+            , c.seqnbr
+            , d.seqnbr
+            , e.seqnbr
         |]
       case ieRawTrees of
         Left err -> pure . Left . show $ err

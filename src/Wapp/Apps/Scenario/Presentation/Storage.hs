@@ -232,11 +232,12 @@ prezEidFromValue aValue = case aValue of
     Ae.Success tmpPrezEid -> Right tmpPrezEid
     Ae.Error err -> Left $ "@[prezEidFromValue] failed to parse presentation ID: " <> err <> "."
   _ -> Left "@[prezEidFromValue] expected a JSON object with an 'eid' field."
+
 -- | Fetch a presentation by its external ID
 -- fetchPresentation :: Pool -> Text -> IO (Either String Presentation)
 -- Rt.RunOptions -> Hp.Pool -> InternalArgs -> IO (Either String Value)
 fetchPresentation :: NativeLibFunction
-fetchPresentation dbPool (value, mbLabel) = do
+fetchPresentation dbPool (value, _) = do
   case prezEidFromValue value of
     Left err -> pure (Left err)
     Right prezEid -> do

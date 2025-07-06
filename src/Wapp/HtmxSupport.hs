@@ -3,10 +3,13 @@
 
 module Wapp.HtmxSupport where
 
+import qualified Data.HashMap.Strict as Hm
+import qualified Data.Aeson.KeyMap as Km
 import Data.Text (Text)
 import GHC.Generics (Generic)
 
-import Data.Aeson (FromJSON (..), Value (Object), (.:), (.:?), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), Value (Object), (.:), (.:?), (.=))
+import qualified Data.Aeson as Ae
 
 
 data HxWsHeaders = HxWsHeaders {
@@ -35,12 +38,27 @@ data HxWsMessage = HxWsMessage {
     wsMessage :: Maybe Text
     , headers :: HxWsHeaders
     , content :: Maybe Text
+    , formFields :: Maybe Value
   }
   deriving (Show, Generic)
 
 
 instance FromJSON HxWsMessage where
-  parseJSON (Object obj) = HxWsMessage <$>
-    obj .:? "hxid-1"
-    <*> obj .: "HEADERS"
-    <*> obj .:? "content"
+  parseJSON (Object obj) = do
+    -- Parse known fields
+    wsMsg <- obj .:? "hxid-1"
+    hdrs <- obj .: "HEADERS"
+    cont <- obj .:? "content"
+    
+    -- Extract remaining fields by removing known ones
+    let
+      knownKeys = ["hxid-1", "HEADERS", "content"]
+      additionalFields = Km.filterWithKey (\k _ -> k `notElem` knownKeys) obj
+      formFields = if Km.null additionalFields then
+          Nothing
+        else
+          Just $ Object additionalFields
+    
+    return $ HxWsMessage wsMsg hdrs cont formFields
+  
+  parseJSON _ = fail "Expected JSON Object for HxWsMessage"

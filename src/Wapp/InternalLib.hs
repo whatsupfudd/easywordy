@@ -13,6 +13,9 @@ import qualified Wapp.Apps.Scenario.Presentation.DbOps as Sc
 import qualified Wapp.Apps.Aox.Logic as Aop
 import qualified Wapp.Apps.Aox.Test as Aot
 import qualified Wapp.Apps.GnuHealth.Logic as Ghlt
+import qualified Wapp.Apps.KnowDocs.DbOps as Kd
+
+
 -- Logic defined within the EasyWordy app:
 buildInternalLibrary :: Wd.LibraryMap
 buildInternalLibrary = Mp.fromList [  
@@ -49,5 +52,10 @@ buildNativeLibrary = Mp.fromList [
   ])
   , ("gnuhealth.dbops", Mp.fromList [
     ("gnuhealth_conf_commands", Ghlt.gnuhealth_conf_commands)
+  ])
+  , ("knowdocs.dbops", Mp.fromList [
+    ("getKnowDocs", Kd.getKnowDocs)
+    , ("getDocTree", Kd.getDocTree)
+    , ("addNewDocument", Kd.addNewDocument)
   ])
   ]
