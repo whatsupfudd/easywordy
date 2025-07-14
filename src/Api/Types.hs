@@ -10,7 +10,8 @@ module Api.Types where
 
 
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
-import Control.Monad.Except (ExceptT, withExceptT, MonadIO, MonadError)
+import Control.Monad.Except (ExceptT, withExceptT, MonadError)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Reader (MonadReader, ReaderT)
 -- import Control.Monad.RWS.Lazy (RWST, MonadReader, MonadState)
 
@@ -20,6 +21,7 @@ import Data.Time (UTCTime)
 import Data.Text.Encoding (encodeUtf8)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as LBS
+-- import Data.Set (Set)
 
 import GHC.Generics
 
@@ -43,7 +45,7 @@ import qualified Options.Runtime as Rt
 -- import Wapp.Types (RoutingDictionary)
 import qualified Wapp.State as Ws
 import qualified Wapp.FileWatcher as Wf
-import Data.Set (Set)
+import qualified Assets.Types as S3
 
 -- Client Data going in / out.
 data ClientInfo = ClientInfo {
@@ -98,6 +100,7 @@ data AppEnv = AppEnv {
     , sapiModuleDef_Ctxt :: Ptr ()
     , appDefWatcher_Ctxt :: Maybe Wf.WatcherControl
     , state_Tmp :: Ws.WappState
+    , s3Storage_Ctxt :: Maybe S3.S3Conn
   }
 
 

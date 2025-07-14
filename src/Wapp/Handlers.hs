@@ -10,7 +10,7 @@ import qualified Control.Monad.Reader as Gm
 import Control.Exception.Safe (tryAny, bracket)
 import Control.Exception (throw, SomeException (..))
 import Control.Monad.Catch (throwM)
-import Control.Monad (forever, void, when)
+import Control.Monad (forever, void, when, forM_)
 import Control.Concurrent (forkIO, killThread, ThreadId, threadDelay)
 import qualified Control.Concurrent.STM as Cs
 
@@ -33,6 +33,7 @@ import qualified Data.Vector as Vc
 
 import System.FSNotify
 import System.FilePath ((</>), takeDirectory, takeExtension, takeFileName)
+import System.Directory (renameFile, copyFile, copyFileWithMetadata, removeFile)
 
 import qualified Data.Aeson as Ae
 import qualified Data.Aeson.KeyMap as Aek
@@ -40,6 +41,7 @@ import Data.Aeson (eitherDecode)
 
 import Servant.Server.Generic (AsServerT, genericServerT)
 import Servant.API.Generic (ToServant)
+import Servant.Multipart (MultipartData (..), Tmp, FileData (..), Mem)
 
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
@@ -82,6 +84,7 @@ wappHandlers =
     phpTest = phpTestHdl
     , xStatic = xStaticHdl
     , wsStream = wsStreamInit
+    , upload = uploadHdl
     , rootZN = welcomeHdZN
   }
 
@@ -168,7 +171,7 @@ wsStreamInit appID conn = do
                 -- TODO: make the creation of newWatcher conditional to the appDef config.
                 -- TODO: create signaler/commChannel here, pass to newWatcher instead of letting it create.
                 newCommChannel <- liftIO $ Cs.newTVarIO ""
-                newUpdateSignal <- liftIO $ Cs.newEmptyTMVarIO
+                newUpdateSignal <- liftIO Cs.newEmptyTMVarIO
                 newWatcher <- liftIO $ newWatcher appDef.rootPath newCommChannel newUpdateSignal
                 mbDb <- case appDef.db of
                   Just dbConf ->
@@ -176,7 +179,7 @@ wsStreamInit appID conn = do
                       dbSettings = DbC.settings dbConf.host dbConf.port dbConf.user dbConf.passwd dbConf.dbase
                     in do
                     liftIO . putStrLn $ "@[wsStreamInit] acquiring db pool, " <> (T.unpack . decodeUtf8) dbConf.host <> ", user: " <>(T.unpack . decodeUtf8) dbConf.user <> ", db:" <> (T.unpack . decodeUtf8) dbConf.dbase
-                    Just <$> liftIO (acquire dbConf.poolSize dbConf.acqTimeout dbConf.poolTimeOut dbSettings)
+                    Just <$> liftIO (acquire dbConf.poolSize dbConf.acqTimeout dbConf.poolTimeOut dbConf.poolIdleTime dbSettings)
                   Nothing -> pure Nothing
                 let
                   newApp = LiveWapp {
@@ -380,7 +383,23 @@ wsStreamInit appID conn = do
     tryAny $ WS.receiveDataMessage conn
 
 
-
+uploadHdl :: MultipartData Tmp -> EasyVerseApp String
+uploadHdl aMultipartData = do
+  liftIO . putStrLn $ "@[uploadHdl] inputs: " <> show aMultipartData.inputs
+  -- liftIO . putStrLn $ "@[uploadHdl] files: " <> show aMultipartData.files
+  forM_ aMultipartData.files $ \aFile -> do
+    liftIO . putStrLn $ "@[uploadHdl] inputName: " <> show aFile.fdInputName
+        <> ", fileName: " <> show aFile.fdFileName
+        -- <> ", size: " <> show (Lbs.length aFile.fdPayload)
+    uName <- liftIO Uu.nextRandom
+    let
+      targetFile = "//bwork/wrkspc/karlin/tmp/EwAssets/" <> T.unpack (Uu.toText uName)
+    liftIO . putStrLn $ "@[uploadHdl] dest name: " <> targetFile
+    -- liftIO $ Lbs.writeFile targetFile aFile.fdPayload
+    liftIO $ copyFileWithMetadata aFile.fdPayload targetFile
+  -- Need to store the file info in the DB, and notify the client's session about the
+  -- existence of the new files.
+  pure "OK"
 
 xStaticHdl :: [String] -> EasyVerseApp Html
 xStaticHdl segments = do

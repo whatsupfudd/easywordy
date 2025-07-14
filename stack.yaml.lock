@@ -5,34 +5,6 @@
 
 packages:
 - completed:
-    hackage: servant-auth-server-0.4.9.0@sha256:dff8a46a1491b9102323094b3a715ceaaa0b2d450cb81e2e0784bd5c19a7199f,5397
-    pantry-tree:
-      sha256: 7625d590d3349090eba88faec5187fede4c4302c8567255e675a592feaa55035
-      size: 1376
-  original:
-    hackage: servant-auth-server-0.4.9.0@sha256:dff8a46a1491b9102323094b3a715ceaaa0b2d450cb81e2e0784bd5c19a7199f,5397
-- completed:
-    hackage: servant-0.20.2@sha256:a4613dc1caa40d1b8db7aff00417dc2d651a8d73a90add3d934218b1778df35c,5371
-    pantry-tree:
-      sha256: 23364c969c171541475d270a7cf0d20ee59b4b88058deafef80b0070416670f0
-      size: 2944
-  original:
-    hackage: servant-0.20.2@sha256:a4613dc1caa40d1b8db7aff00417dc2d651a8d73a90add3d934218b1778df35c,5371
-- completed:
-    hackage: servant-auth-0.4.2.0@sha256:5fa6b8c2b40deb542d9b2fc2d18ce0c90f7e4a26268f018dd933c8881c23db5f,2211
-    pantry-tree:
-      sha256: 6521cfdade49ad8f811a546c69da6d48c0f0cb84f9452c2a7a9b2fd3e2af9243
-      size: 332
-  original:
-    hackage: servant-auth-0.4.2.0@sha256:5fa6b8c2b40deb542d9b2fc2d18ce0c90f7e4a26268f018dd933c8881c23db5f,2211
-- completed:
-    hackage: servant-server-0.20.2@sha256:5a2d11959256fed8f4918f02f55cb597b61cc92191a672cd2d2228fadd5ee0ec,6226
-    pantry-tree:
-      sha256: 234c87e0a70ab6b15df75b526b344715584693be4a5c1b373ecfaaebc9c4127b
-      size: 2615
-  original:
-    hackage: servant-server-0.20.2@sha256:5a2d11959256fed8f4918f02f55cb597b61cc92191a672cd2d2228fadd5ee0ec,6226
-- completed:
     hackage: servant-htmx-0.1.0.2@sha256:cdafd3165d28694ec4bf81fff3b87b4721415293d75a394a97c26d0d4d57e38c,1817
     pantry-tree:
       sha256: e2eac22dcc977e6081ba7614d748d7a6a83b2001d4e719d6afb9ae6edf6bb23d
@@ -40,79 +12,16 @@ packages:
   original:
     hackage: servant-htmx-0.1.0.2@sha256:cdafd3165d28694ec4bf81fff3b87b4721415293d75a394a97c26d0d4d57e38c,1817
 - completed:
-    hackage: mysql-haskell-1.1.5@sha256:70b2696dbfeaf5d85c06158b16378f448d1ed04cffadeb745272a433cda0bd9f,5160
-    pantry-tree:
-      sha256: a1a6708de76921243602aa7fb6bdb19e34eedee3d1e15132abff798d1b6effd5
-      size: 4968
-  original:
-    hackage: mysql-haskell-1.1.5@sha256:70b2696dbfeaf5d85c06158b16378f448d1ed04cffadeb745272a433cda0bd9f,5160
-- completed:
     hackage: blaze-htmx-0.1.0.0@sha256:cfd799bf5e0693879ad175168f6c78d45cb8f543428fa374f6ffb62fbc8dc52f,1327
     pantry-tree:
       sha256: cb241d2dbe5bf54c3b37adf4b34284f766c6d6a6f408e8af9e0ad6be01c89f8c
       size: 473
   original:
     hackage: blaze-htmx-0.1.0.0@sha256:cfd799bf5e0693879ad175168f6c78d45cb8f543428fa374f6ffb62fbc8dc52f,1327
-- completed:
-    hackage: crypton-x509-1.7.7@sha256:bc5834cabe1a301ff1ab50f373a50b5ce237ea4ea01f008f554544ab8cae1686,2268
-    pantry-tree:
-      sha256: 6f7cda7e46beea503d7eebc8ad8b8c650a4d587826efb8616038c42b1d915292
-      size: 1080
-  original:
-    hackage: crypton-x509-1.7.7@sha256:bc5834cabe1a301ff1ab50f373a50b5ce237ea4ea01f008f554544ab8cae1686,2268
-- completed:
-    hackage: crypton-x509-store-1.6.9@sha256:422b9b9f87a7382c66385d047615b16fc86a68c08ea22b1e0117c143a2d44050,1750
-    pantry-tree:
-      sha256: 87654d130a7f987ee139c821a1be45736d18df9fa4cb1142c4e054d3802338f3
-      size: 406
-  original:
-    hackage: crypton-x509-store-1.6.9@sha256:422b9b9f87a7382c66385d047615b16fc86a68c08ea22b1e0117c143a2d44050,1750
-- completed:
-    hackage: crypton-x509-system-1.6.7@sha256:023ed573d82983bc473a37a89e0434a085b413be9f68d07e085361056afd4637,1532
-    pantry-tree:
-      sha256: c0ca49e6a9537f3fdb7b47c5cfe93f7d744a369bf9d089f3c668b9c2d97402b7
-      size: 399
-  original:
-    hackage: crypton-x509-system-1.6.7@sha256:023ed573d82983bc473a37a89e0434a085b413be9f68d07e085361056afd4637,1532
-- completed:
-    hackage: crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
-    pantry-tree:
-      sha256: d4a0135f11218614fcd912cffaf54de8f749caca8696380e2589cbcfd64cc681
-      size: 639
-  original:
-    hackage: crypton-x509-validation-1.6.12@sha256:85989721b64be4b90de9f66ef641c26f57575cffed1a50d707065fb60176f386,2227
-- completed:
-    hackage: crypton-connection-0.4.3@sha256:9d4ff9c98f474b1d6f3809b9a30f3cbac0094cddf5d8cbdccd1f523b699e7333,1633
-    pantry-tree:
-      sha256: 8969e68d2914c8d44957f6eb68049131c8325bdfb926051ab023daca9f8fc6e5
-      size: 464
-  original:
-    hackage: crypton-connection-0.4.3@sha256:9d4ff9c98f474b1d6f3809b9a30f3cbac0094cddf5d8cbdccd1f523b699e7333,1633
-- completed:
-    hackage: tls-2.0.6@sha256:bd83146d767b0a2f70b070128448423e2b008241dce1910f891953a917abe33c,6119
-    pantry-tree:
-      sha256: e87e4858c91947cb1795f68ae8b6dfc519ec0351cebbbfc259c5719441c0a077
-      size: 6451
-  original:
-    hackage: tls-2.0.6@sha256:bd83146d767b0a2f70b070128448423e2b008241dce1910f891953a917abe33c,6119
-- completed:
-    hackage: http-client-0.7.18@sha256:fadcb57b2f36bbd1773538e10af7da581ef1fa479b4f7d30f55cba3247f71b8c,5613
-    pantry-tree:
-      sha256: 457feeb8879d8007e3999d4f3456e50f7460e6c720bfc5b3f7d0501f5fd802e1
-      size: 2547
-  original:
-    hackage: http-client-0.7.18@sha256:fadcb57b2f36bbd1773538e10af7da581ef1fa479b4f7d30f55cba3247f71b8c,5613
-- completed:
-    hackage: http-client-tls-0.3.6.4@sha256:17217717fbbcda951b4ff000a7fbce416975b154c9bc09e56d9cac8ffb3b9525,2040
-    pantry-tree:
-      sha256: 4b316381e910056a29ad08ac6ffd430b2df97a84c0875c58d0f88b7f3113aa93
-      size: 435
-  original:
-    hackage: http-client-tls-0.3.6.4@sha256:17217717fbbcda951b4ff000a7fbce416975b154c9bc09e56d9cac8ffb3b9525,2040
 snapshots:
 - completed:
-    sha256: a81fb3877c4f9031e1325eb3935122e608d80715dc16b586eb11ddbff8671ecd
-    size: 640086
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/25.yaml
+    sha256: 238fa745b64f91184f9aa518fe04bdde6552533d169b0da5256670df83a0f1a9
+    size: 721141
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/44.yaml
   original:
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/25.yaml
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/44.yaml

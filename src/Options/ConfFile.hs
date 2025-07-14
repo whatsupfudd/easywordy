@@ -87,6 +87,14 @@ newtype TavusOptions = TavusOptions {
   }
   deriving stock (Show, Generic)
 
+data S3Options = S3Options {
+  accessKey :: Maybe Text
+  , secretKey :: Maybe Text
+  , host :: Maybe Text
+  , region :: Maybe Text
+  , bucket :: Maybe Text
+  }
+  deriving stock (Show, Generic)
 
 data FileOptions = FileOptions {
   debug :: Maybe Int
@@ -100,6 +108,7 @@ data FileOptions = FileOptions {
   , wapp :: Maybe WappOptions
   , openai :: Maybe OpenAiOptions
   , tavus :: Maybe TavusOptions
+  , s3store :: Maybe S3Options
  }
  deriving stock (Show, Generic)
 
@@ -109,7 +118,7 @@ defaultConfName = ".fudd/easywordy/config.yaml"
 
 defaultConfigFilePath :: IO (Either String FilePath)
 defaultConfigFilePath = do
-  eiHomeDir <- Cexc.try $ Sdir.getHomeDirectory :: IO (Either Serr.IOError FilePath)
+  eiHomeDir <- Cexc.try Sdir.getHomeDirectory :: IO (Either Serr.IOError FilePath)
   case eiHomeDir of
     Left err -> pure . Left $ "@[defaultConfigFilePath] err: " <> show err
     Right aPath -> pure . Right $ Spsx.joinPath [aPath, defaultConfName]
@@ -127,7 +136,7 @@ instance Aes.FromJSON ZbOptions
 instance Aes.FromJSON OpenAiOptions
 instance Aes.FromJSON WappOptions
 instance Aes.FromJSON TavusOptions
-
+instance Aes.FromJSON S3Options
 
 parseFileOptions :: FilePath -> IO (Either String FileOptions)
 parseFileOptions filePath =

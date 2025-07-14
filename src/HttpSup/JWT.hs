@@ -2,6 +2,7 @@ module HttpSup.JWT where
 
 import Control.Lens ((?~), (^.), view, set)
 import Control.Monad.Except
+import Control.Monad.IO.Class (liftIO)
 -- import Crypto.JOSE.JWA.JWS (Alg (ES256))
 {-
 import Crypto.JOSE.JWK (AsPublicKey (asPublicKey), Crv (P_256),

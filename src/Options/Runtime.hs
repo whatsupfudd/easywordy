@@ -15,7 +15,7 @@ import Data.Text (Text)
 
 import HttpSup.CorsPolicy (CORSConfig, defaultCorsPolicy)
 import DB.Connect (PgDbConfig (..), defaultPgDbConf, MqlDbConfig (..), defaultMqlDbConf)
-
+import Assets.Types (S3Config (..), defaultS3Conf)
 
 -- TODO: create a proper Wordpress configuration set:
 defaultWpConf :: FilePath -> WpConfig
@@ -92,6 +92,7 @@ data RunOptions = RunOptions {
     , wapp :: WappConfig
     , openai :: OpenAiConfig
     , tavus :: TavusConfig
+    , s3store :: Maybe S3Config
   }
   deriving (Show)
 
@@ -110,4 +111,5 @@ defaultRun homeDir homeConfig server port =
     , wapp = defaultWappConf homeDir
     , openai = defaultOpenAiConf
     , tavus = defaultTavusConf
+    , s3store = Nothing
   }

@@ -28,6 +28,8 @@ library
       Api.Handlers
       Api.Session
       Api.Types
+      Assets.Storage
+      Assets.Types
       Commands
       Commands.Help
       Commands.Server
@@ -104,6 +106,7 @@ library
     , blaze-svg
     , bytestring
     , case-insensitive
+    , conduit
     , connection >=0.3.2
     , containers
     , directory
@@ -129,6 +132,7 @@ library
     , lucid
     , markdown
     , megaparsec
+    , minio-hs
     , mmark
     , mtl
     , mysql-haskell
@@ -138,6 +142,7 @@ library
     , profunctors
     , rio
     , safe-exceptions
+    , scientific
     , servant
     , servant-auth
     , servant-auth-server
@@ -150,6 +155,7 @@ library
     , text
     , time
     , unix
+    , unliftio
     , unordered-containers
     , uuid
     , vector
@@ -185,6 +191,7 @@ executable easywordy
     , blaze-svg
     , bytestring
     , case-insensitive
+    , conduit
     , connection >=0.3.2
     , containers
     , directory
@@ -211,6 +218,7 @@ executable easywordy
     , lucid
     , markdown
     , megaparsec
+    , minio-hs
     , mmark
     , mtl
     , mysql-haskell
@@ -220,6 +228,7 @@ executable easywordy
     , profunctors
     , rio
     , safe-exceptions
+    , scientific
     , servant
     , servant-auth
     , servant-auth-server
@@ -232,6 +241,7 @@ executable easywordy
     , text
     , time
     , unix
+    , unliftio
     , unordered-containers
     , uuid
     , vector
@@ -268,6 +278,7 @@ test-suite easywordy-test
     , blaze-svg
     , bytestring
     , case-insensitive
+    , conduit
     , connection >=0.3.2
     , containers
     , directory
@@ -294,6 +305,7 @@ test-suite easywordy-test
     , lucid
     , markdown
     , megaparsec
+    , minio-hs
     , mmark
     , mtl
     , mysql-haskell
@@ -303,6 +315,7 @@ test-suite easywordy-test
     , profunctors
     , rio
     , safe-exceptions
+    , scientific
     , servant
     , servant-auth
     , servant-auth-server
@@ -315,6 +328,7 @@ test-suite easywordy-test
     , text
     , time
     , unix
+    , unliftio
     , unordered-containers
     , uuid
     , vector

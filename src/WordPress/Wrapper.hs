@@ -371,7 +371,7 @@ showZVal !zv =
         fprintf(stderr, "zv: NULL\n");
         break;
       case IS_LONG:
-        fprintf(stderr, "zv: %ld\n", Z_LVAL_P(zv));
+        fprintf(stderr, "zv: %lld\n", Z_LVAL_P(zv));
         break;
       case IS_DOUBLE:
         fprintf(stderr, "zv: %f\n", Z_DVAL_P(zv));

@@ -118,6 +118,14 @@ dependencies:
   - profunctors
   # For Aox:
   - aoxsup
+  # For MinIO:
+  - minio-hs
+  - scientific
+  - conduit
+  - unliftio
+  #- primitive
+  #- memory
+
 
 
 default-extensions:
@@ -136,6 +144,7 @@ ghc-options:
 - -Wmissing-home-modules
 - -Wpartial-fields
 - -Wredundant-constraints
+
 
 library:
   source-dirs: src

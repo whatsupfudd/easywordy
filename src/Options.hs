@@ -24,7 +24,8 @@ import qualified HttpSup.CorsPolicy as Hcrs
 
 import qualified Options.Cli as Cl (CliOptions (..), EnvOptions (..))
 import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..)
-                  , WpOptions (..), ZbOptions (..), OpenAiOptions (..), WappOptions (..), TavusOptions (..))
+                  , WpOptions (..), ZbOptions (..), OpenAiOptions (..), WappOptions (..), TavusOptions (..), S3Options (..))
+import qualified Assets.Types as At
 import qualified Options.Runtime as Rt (RunOptions (..), defaultRun, WpConfig (..), defaultWpConf, PgDbConfig (..), defaultPgDbConf
                 , MqlDbConfig (..), defaultMqlDbConf, ZbConfig (..), defaultZbConf, OpenAiConfig (..), defaultOpenAiConf
                 , WappConfig (..), defaultWappConf, TavusConfig (..), defaultTavusConf)
@@ -40,6 +41,7 @@ type ZbOptIOSt = StateT Rt.ZbConfig (StateT Rt.RunOptions IO) ConfError
 type OpenAiOptIOSt = StateT Rt.OpenAiConfig (StateT Rt.RunOptions IO) ConfError
 type WappOptIOSt = StateT Rt.WappConfig (StateT Rt.RunOptions IO) ConfError
 type TavusOptIOSt = StateT Rt.TavusConfig (StateT Rt.RunOptions IO) ConfError
+type S3OptIOSt = StateT At.S3Config (StateT Rt.RunOptions IO) ConfError
 
 
 mconf :: MonadState s m => Maybe t -> (t -> s -> s) -> m ()
@@ -97,6 +99,7 @@ mergeOptions cli file env = do
     innerConf (\nVal s -> s { Rt.wapp = nVal }) parseWapp (Rt.defaultWappConf appHome) file.wapp
     innerConf (\nVal s -> s { Rt.openai = nVal }) parseOpenAi Rt.defaultOpenAiConf file.openai
     innerConf (\nVal s -> s { Rt.tavus = nVal }) parseTavus Rt.defaultTavusConf file.tavus
+    innerConf (\nVal s -> s { Rt.s3store = Just nVal }) parseS3 At.defaultS3Conf file.s3store
     -- pure $ Right ()
 
 
@@ -181,6 +184,15 @@ mergeOptions cli file env = do
     pure $ Right ()
 
 
+  parseS3 :: Fo.S3Options -> S3OptIOSt
+  parseS3 s3O = do
+    mconf s3O.accessKey $ \nVal s -> s { At.user = nVal }
+    mconf s3O.secretKey $ \nVal s -> s { At.passwd = nVal }
+    mconf s3O.host $ \nVal s -> s { At.host = nVal }
+    mconf s3O.region $ \nVal s -> s { At.region = nVal }
+    mconf s3O.bucket $ \nVal s -> s { At.bucket = nVal }
+    pure $ Right ()
+
 -- | resolveEnvValue resolves an environment variable value.
 resolveEnvValue :: FilePath -> IO (Maybe FilePath)
 resolveEnvValue aVal =
@@ -207,3 +219,4 @@ resolveValue aVal setter = do
           Just aVal -> do
             modify $ setter aVal
             pure $ Right ()
+

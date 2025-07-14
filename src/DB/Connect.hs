@@ -1,7 +1,8 @@
 module DB.Connect where
 
 import Control.Exception (bracket)
-import Control.Monad.Cont (ContT (..), liftIO)
+import Control.Monad.Cont (ContT (..))
+import Control.Monad.IO.Class (liftIO)
 
 import Data.ByteString (ByteString)
 import Data.Text (Text)
@@ -66,7 +67,7 @@ startPg dbC =
     dbSettings = DbConn.settings dbC.host dbC.port dbC.user dbC.passwd dbC.dbase
   in do
   liftIO . putStrLn $ "@[startPg] user: " <> show dbC.user <> " db: " <> show dbC.dbase <> "."
-  ContT $ bracket (acquire dbC.poolSize dbC.acqTimeout dbC.poolTimeOut dbSettings) release
+  ContT $ bracket (acquire dbC.poolSize dbC.acqTimeout dbC.poolTimeOut dbC.poolIdleTime dbSettings) release
 
 
 startMql :: MqlDbConfig -> ContT r IO Msql.MySQLConn

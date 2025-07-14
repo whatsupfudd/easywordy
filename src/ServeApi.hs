@@ -9,6 +9,7 @@ import Control.Monad.Reader (runReaderT)
 -- import Control.Monad.RWS (runRWST)
 
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.Text (unpack)
 import qualified Data.Map as Mp
 import GHC.Generics
 
@@ -21,10 +22,10 @@ import Servant.Auth.Server (Auth, AuthResult (..), IsSecure (NotSecure)
 import qualified Servant.Auth.Server as Sauth
 import Servant.API ((:>), JSON)
 import Servant.API.Generic ((:-), ToServantApi, ToServant)
-import Servant.Multipart (defaultMultipartOptions, MultipartOptions (..), Tmp)
+import Servant.Multipart (defaultMultipartOptions, MultipartOptions (..), Tmp, Mem)
 
 import Network.Wai (Application)
-import Network.Wai.Parse (setMaxRequestKeyLength, defaultParseRequestBodyOptions)
+import Network.Wai.Parse (setMaxRequestKeyLength, defaultParseRequestBodyOptions, setMaxRequestFileSize, setMaxRequestFilesSize)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 
 import Database.MySQL.Base (MySQLConn)
@@ -42,6 +43,9 @@ import Api.Handlers (anonHandlers, authHandlers)
 import Routing.TopDef (TopRoutes)
 import Routing.TopHandlers (serverApiT)
 import WordPress.Wrapper (beginPhp)
+import qualified Assets.Types as S3
+import qualified Assets.Storage as S3
+import Assets.Types (S3Config (..))
 import qualified Options.Runtime as Rt
 
 
@@ -49,7 +53,7 @@ import qualified Options.Runtime as Rt
 import Wapp.AppDef (RoutingDictionary)
 import Wapp.State (WappState (..))
 import Wapp.FileWatcher (WatcherControl)
-import Control.Monad.Cont (liftIO)
+import Control.Monad.IO.Class (liftIO)
 type MainApi = ToServantApi TopRoutes
 
 
@@ -69,19 +73,21 @@ launchServant rtOpts pgPool mqlConn sapiModuleDef (appDefs, defWatcher) = do
     jwtSettings = Sauth.defaultJWTSettings jwtKey
     -- sessionAuth = validateUser dbPool
     sessionAuth = validateUser
-
     -- For file upload support, will be used later:
+    multipartOpts :: MultipartOptions Tmp
     multipartOpts = (defaultMultipartOptions (Proxy :: Proxy Tmp)) {
-        generalOptions = setMaxRequestKeyLength 512 defaultParseRequestBodyOptions
+        generalOptions = setMaxRequestFilesSize 50000000 $ setMaxRequestFileSize 50000000 $ setMaxRequestKeyLength 1024 defaultParseRequestBodyOptions
       }
 
+
     apiContext = cookieCfg :. jwtSettings :. sessionAuth :. multipartOpts :. EmptyContext
-    apiContextP = Proxy :: Proxy '[CookieSettings, JWTSettings, BasicAuthCfg]
+    apiContextP = Proxy :: Proxy '[CookieSettings, JWTSettings, BasicAuthCfg, MultipartOptions Tmp]
 
     middlewares = case rtOpts.corsPolicy of
       Nothing -> linkUp $ id :| [ logStdout ]
       Just aPolicy -> linkUp $ id :| [ logStdout, setCorsPolicy aPolicy ]
 
+    s3Storage = S3.makeS3Conn <$> rtOpts.s3store
     -- TODO: add errorMw @JSON @'["message", "status"] when Servant.Errors is compatible with aeson-2.
     -- TMP: The global state is not useful here, it needs to be managed at the top level in its own thread.
     state = WappState { appDefs = appDefs, cache = Mp.empty, sessions = Mp.empty }
@@ -89,9 +95,19 @@ launchServant rtOpts pgPool mqlConn sapiModuleDef (appDefs, defWatcher) = do
             , sapiModuleDef_Ctxt = sapiModuleDef
             , appDefWatcher_Ctxt = defWatcher
             , state_Tmp = state
+            , s3Storage_Ctxt = s3Storage
           }
     -- TODO: add state to the handler if running with RWST.
     server = hoistServerWithContext serverApiProxy apiContextP (apiAsHandler appEnv) serverApiT
+
+  case s3Storage of
+    Nothing -> putStrLn "@[serveApi] no s3 storage configured."
+    Just aConn -> do
+      putStrLn $ "@[serveApi] using s3, host: " <> maybe "<error!>" (unpack . S3.host) rtOpts.s3store <> ", bucket: " <> show aConn.bucketCn
+      {-
+      testS3 <- S3.listFiles aConn Nothing -- (Just "/00")
+      putStrLn $ "@[serveApi] testS3: " <> show testS3
+      -}
 
   putStrLn $ "@[serveApi] listening on port " <> show rtOpts.serverPort <> "."
   beginPhp sapiModuleDef

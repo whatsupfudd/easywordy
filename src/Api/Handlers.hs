@@ -1,13 +1,7 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 
 module Api.Handlers where
@@ -97,8 +91,7 @@ loginHandler :: LoginForm -> EasyVerseApp LoginResult
 loginHandler form = do
   liftIO $ putStrLn $ "@[loginHandler] user:" <> DT.unpack form.username <> ", pwd: " <> DT.unpack form.secret
   -- TODO: check for u/p validity, if so return new Session, otherwise throw error:
-  rezL <- loginUser form
-  pure rezL
+  loginUser form
   {-
     -- Session.loginUser form
     --  LoginResult {

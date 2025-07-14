@@ -17,7 +17,6 @@ import Data.Time.Clock (UTCTime, getCurrentTime, diffUTCTime)
 
 import System.FilePath ((</>), takeDirectory, takeExtension, takeFileName)
 import System.FSNotify (Event(..), WatchManager, EventIsDirectory (..), watchTreeChan, withManager, stopManager, startManager)
-import Control.Monad.Cont (lift)
 
 
 -- | Debouncer state for tracking file modification times
