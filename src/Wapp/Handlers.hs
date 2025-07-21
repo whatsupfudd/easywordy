@@ -58,7 +58,7 @@ import Api.Types (EasyVerseApp (..), AppEnv (..), Html (..))
 import qualified Options.Runtime as Rt
 import qualified DB.Connect as Db
 
-import WordPress.Wrapper (handlePhpRequest)
+import Wapp.Internal.WordPress.Wrapper (handlePhpRequest)
 import Wapp.HtmxSupport
 import Wapp.RouteDef (WappRoutes (..))
 

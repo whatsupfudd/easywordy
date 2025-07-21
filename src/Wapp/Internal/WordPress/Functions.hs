@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveAnyClass #-}
-module WordPress.Functions where
+module Wapp.Internal.WordPress.Functions where
 
 import qualified Data.ByteString as Bs
 import qualified Data.ByteString.Lazy as Lbs
@@ -31,7 +31,7 @@ import qualified Options.Runtime as Rt
 import qualified Wapp.AppDef as Wd
 import Wapp.AppDef (RequestParams (..))
 
-import WordPress.Opers (getVersions, getFoldersForVersion, getFilesForFolder
+import Wapp.Internal.WordPress.Opers (getVersions, getFoldersForVersion, getFilesForFolder
           , getConstantsForFile, getAstForFile, getFileDetailsForID
           , getErrorForFile, getFolderDetailsForID)
 
@@ -163,7 +163,7 @@ fetchFiles rtOpts pgDb (requestParams, _) =
                     H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "Label"
                     H.th H.! A.scope "col" H.! A.class_ "px-6 py-3" $ "ID"
                 H.tbody $ do
-                  mapM_ (\(uid, label) -> 
+                  mapM_ (\(uid, label) ->
                     let
                       fileParams = FileParams { fileID = uid }
                       fileParamsStr = T.decodeUtf8 . Bs.toStrict . Ae.encode $ fileParams
@@ -243,7 +243,7 @@ printAst astBs constantsBs =
           ) (groupBy (Bs.unpack astBs))
     numberedOps = V.map (\(opCode, idx) -> do
             H.br
-            H.toHtml $ show (4 * idx) <> ": " <> T.unpack opCode) 
+            H.toHtml $ show (4 * idx) <> ": " <> T.unpack opCode)
         (V.zip opCodes (V.enumFromN 0 (V.length opCodes)))
   in
   H.div H.! A.class_ "p-4 text-gray-900 dark:text-gray-300" $ do
@@ -301,7 +301,7 @@ parseActionList constantVec = do
     anAction <- parseAction constantVec
     -- t2Action <- parseAction constantVec
     -- t3Action <- parseAction constantVec
-    {-- 
+    {--
     t2Action <- do
       firstNbr <- Bg.getInt32be
       sndNbr <- Bg.getInt32be
@@ -468,7 +468,7 @@ parseAction constantVec = do
         block
         H.div H.! A.class_ "text-sm text-gray-500" $ H.i $ H.toHtml $ "stmt pos: " <> show startPos <> "-" <> show endPos
 
-  
+
 
 parseExpression :: V.Vector Bs.ByteString -> Bg.Get H.Html
 parseExpression constantVec = do
@@ -761,7 +761,7 @@ parseLiteral constantVec = do
         pure . H.div $ do
           doHtml "NullLiteral"
       _ -> pure $ doHtmlStr ("Unknown literal type " <> show literal)
-    
+
 
 parseStringDetails :: V.Vector Bs.ByteString -> Bg.Get H.Html
 parseStringDetails constantVec = do

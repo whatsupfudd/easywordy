@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Avoid lambda" #-}
-module Wapp.Apps.Z14L.Logic where
+module Wapp.Internal.Z14L.Logic where
 
 import qualified Data.ByteString as Bs
 import Data.Maybe (fromMaybe)

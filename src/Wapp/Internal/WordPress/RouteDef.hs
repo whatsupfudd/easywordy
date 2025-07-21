@@ -6,7 +6,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module WordPress.RouteDef where
+module Wapp.Internal.WordPress.RouteDef where
 
 import Data.Text (Text)
 import GHC.Generics
@@ -36,7 +36,7 @@ newtype IndexPosting =
 
 instance FromForm IndexPosting where
   fromForm f = Language . LangBody <$> parseUnique "language" f
-  
+
 data Trackback = Trackback {
   nameB :: Text
   , urlB :: Text

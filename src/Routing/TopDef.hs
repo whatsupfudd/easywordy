@@ -11,7 +11,7 @@ import Servant.API ((:>), ReqBody, JSON, Capture, Post, Get)
 import Servant.API.Generic ((:-), ToServantApi)
 import Servant.Auth.Server (Auth, JWT, BasicAuth)
 
-import WordPress.RouteDef (WpTopRoutes)
+import Wapp.Internal.WordPress.RouteDef (WpTopRoutes)
 import Wapp.RouteDef (WappTopRoutes)
 import Demo.RouteDef (DemoTopRoutes)
 

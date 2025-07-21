@@ -1,4 +1,4 @@
-module WordPress.Handlers where
+module Wapp.Internal.WordPress.Handlers where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (asks)
@@ -34,9 +34,9 @@ import Options.Runtime (RunOptions (..), WpConfig (..), ZbConfig (..))
 
 import Api.Types
 import qualified HttpSup.Types as Ht
-import WordPress.RouteDef (WpTopRoutes (..), AdminRoutes (..), IncludesRoutes (..)
+import Wapp.Internal.WordPress.RouteDef (WpTopRoutes (..), AdminRoutes (..), IncludesRoutes (..)
       , IndexPosting (..), PostComment (..), Trackback (..), InstallPost (..))
-import WordPress.Wrapper (handlePhpRequest)
+import Wapp.Internal.WordPress.Wrapper (handlePhpRequest)
 
 
 wordpressHandlers :: ToServant WpTopRoutes (AsServerT EasyVerseApp)
@@ -56,7 +56,7 @@ wordpressHandlers =
 
 
 adminHandlers :: ToServant AdminRoutes (AsServerT EasyVerseApp)
-adminHandlers = 
+adminHandlers =
   genericServerT $ AdminRoutes {
     root = adminHandler "" Mp.empty
     , index = adminHandler "index.php" Mp.empty -- WP.adminHandler

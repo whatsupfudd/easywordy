@@ -5,10 +5,10 @@ import Data.Text (Text)
 
 import qualified Wapp.AppDef as Wd
 
-import qualified WordPress.Functions as Wpf
-import qualified Wapp.Apps.Z14L.Logic as Cl
-import qualified Wapp.Apps.Z14L.Video as Cv
-import qualified Wapp.Apps.Scenario.Prez as Sc
+import qualified Wapp.Internal.WordPress.Functions as Wpf
+import qualified Wapp.Internal.Z14L.Logic as Cl
+import qualified Wapp.Internal.Z14L.Video as Cv
+-- import qualified Wapp.Apps.Scenario.Prez as Sc
 import qualified Wapp.Apps.Scenario.Presentation.DbOps as Sc
 import qualified Wapp.Apps.Aox.Logic as Aop
 import qualified Wapp.Apps.Aox.Test as Aot
@@ -18,7 +18,7 @@ import qualified Wapp.Apps.KnowDocs.DbOps as Kd
 
 -- Logic defined within the EasyWordy app:
 buildInternalLibrary :: Wd.LibraryMap
-buildInternalLibrary = Mp.fromList [  
+buildInternalLibrary = Mp.fromList [
     ("internal.wordpress", Mp.fromList [
       ("fetchVersions", Wpf.fetchVersions)
       , ("fetchFolders", Wpf.fetchFolders)
@@ -29,12 +29,14 @@ buildInternalLibrary = Mp.fromList [
       ("receiveMsg", Cl.receiveMsg)
       , ("startVideoSession", Cv.startSession)
     ])
-    , ("internal.scenario", Mp.fromList [
+    {-, ("internal.scenario", Mp.fromList [
       ("browsePrez", Sc.browsePrez)
     ])
-    , ("internal.aox", Mp.fromList [
+    -}
+    {- , ("internal.aox", Mp.fromList [
       ("getUserMailboxes", Aot.getUserMailboxes)
     ])
+    --}
   ]
 
 

@@ -65,6 +65,11 @@ extra-deps:
   - ../../../Haskell/OpenAI/LocalLibs/hs-connection
   - ../../../Haskell/Minio/minio-hs
   - ../Wapp/Lib/Natives/Aox
+  - ../Wapp/Lib/Natives/GnuHealth
+  - ../Wapp/Lib/Natives/KnowDocs
+  - ../Wapp/Lib/Natives/Scenario
+  - ../Wapp/Lib/Natives/Z14L
+  - ../Wapp/Lib/Natives/General
 
 #  - servant-docs
 #  - servant-foreign

@@ -4,7 +4,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE BangPatterns #-}
 
-module WordPress.Wrapper where
+module Wapp.Internal.WordPress.Wrapper where
 
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as B
@@ -170,7 +170,7 @@ invokeFile rtOpts urlPath argMap = do
 
     fprintf(stderr, "@[invokeFile] Done.\n");
     fflush(stderr);
-  } 
+  }
   |]
   endRequest
   endTime <- getCurrentTime
@@ -179,7 +179,7 @@ invokeFile rtOpts urlPath argMap = do
   (,) <$> flushTextBuffer <*> pure elapsedTime
 
 
-initRequest :: String -> String -> String -> IO () 
+initRequest :: String -> String -> String -> IO ()
 initRequest prefix postfix queryStr = do
   fullPath <- newCAString $  prefix </> postfix
   requestUri <- newCAString $ postfix <> "?" <> queryStr
@@ -194,7 +194,7 @@ initRequest prefix postfix queryStr = do
       "output_buffering=0\n"
       "max_execution_time=0\n"
       "max_input_time=-1\n\0";
-  
+
     zend_signal_startup();
 
 

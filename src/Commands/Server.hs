@@ -11,7 +11,7 @@ import Database.MySQL.Base (connect, defaultConnectInfo, query_, ConnectInfo(..)
 import Network.Wai.Handler.Warp as Wrp
 
 import Api.Handlers (setupWai)
-import WordPress.Wrapper (defineSapiModuleStruct, endPhp)
+import Wapp.Internal.WordPress.Wrapper (defineSapiModuleStruct, endPhp)
 import DB.Connect (startMql, startPg)
 import ServeApi (launchServant)
 import Wapp.FileWatcher (newWatcher)
@@ -42,7 +42,7 @@ serverCmd rtOpts = do
   where
   mainAction (pgPool, mqlConn, sapiModuleDef, appDefs) = do
     putStrLn $ "@[mainAction] starting."
-    let 
+    let
       settings = setupWai rtOpts.serverPort rtOpts.serverHost (globalShutdownHandler sapiModuleDef)
     webHandler <- launchServant rtOpts pgPool mqlConn sapiModuleDef appDefs
     putStrLn $ "@[mainAction] webHandler started."

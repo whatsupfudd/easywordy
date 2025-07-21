@@ -54,24 +54,16 @@ library
       ServeApi
       Utils.Json
       Wapp.AppDef
-      Wapp.Apps.Aox.Logic
-      Wapp.Apps.Aox.Test
-      Wapp.Apps.Aox.Types
-      Wapp.Apps.GnuHealth.Logic
-      Wapp.Apps.GnuHealth.Opers
-      Wapp.Apps.GnuHealth.Types
-      Wapp.Apps.KnowDocs.DbContainers
-      Wapp.Apps.KnowDocs.DbOps
-      Wapp.Apps.Scenario.Presentation.DbContainers
-      Wapp.Apps.Scenario.Presentation.DbOps
-      Wapp.Apps.Scenario.Presentation.Storage
-      Wapp.Apps.Scenario.Presentation.Types
-      Wapp.Apps.Scenario.Prez
-      Wapp.Apps.Z14L.Logic
-      Wapp.Apps.Z14L.Video
       Wapp.FileWatcher
       Wapp.Handlers
       Wapp.HtmxSupport
+      Wapp.Internal.WordPress.Functions
+      Wapp.Internal.WordPress.Handlers
+      Wapp.Internal.WordPress.Opers
+      Wapp.Internal.WordPress.RouteDef
+      Wapp.Internal.WordPress.Wrapper
+      Wapp.Internal.Z14L.Logic
+      Wapp.Internal.Z14L.Video
       Wapp.InternalLib
       Wapp.JSSupport
       Wapp.Registry
@@ -79,11 +71,6 @@ library
       Wapp.State
       Wapp.Types
       Wapp.WsRouter
-      WordPress.Functions
-      WordPress.Handlers
-      WordPress.Opers
-      WordPress.RouteDef
-      WordPress.Wrapper
   other-modules:
       Paths_easywordy
   hs-source-dirs:
@@ -114,6 +101,7 @@ library
     , filepath
     , fsnotify
     , gitrev
+    , gnuhealth
     , hasql
     , hasql-pool
     , hasql-th
@@ -128,6 +116,7 @@ library
     , inline-js-core
     , io-streams
     , jose
+    , knowdocs
     , lens
     , lucid
     , markdown
@@ -142,6 +131,7 @@ library
     , profunctors
     , rio
     , safe-exceptions
+    , scenario
     , scientific
     , servant
     , servant-auth
@@ -165,6 +155,7 @@ library
     , warp
     , websockets
     , yaml
+    , z14l
   default-language: Haskell2010
 
 executable easywordy
@@ -200,6 +191,7 @@ executable easywordy
     , filepath
     , fsnotify
     , gitrev
+    , gnuhealth
     , hasql
     , hasql-pool
     , hasql-th
@@ -214,6 +206,7 @@ executable easywordy
     , inline-js-core
     , io-streams
     , jose
+    , knowdocs
     , lens
     , lucid
     , markdown
@@ -228,6 +221,7 @@ executable easywordy
     , profunctors
     , rio
     , safe-exceptions
+    , scenario
     , scientific
     , servant
     , servant-auth
@@ -251,6 +245,7 @@ executable easywordy
     , warp
     , websockets
     , yaml
+    , z14l
   default-language: Haskell2010
 
 test-suite easywordy-test
@@ -287,6 +282,7 @@ test-suite easywordy-test
     , filepath
     , fsnotify
     , gitrev
+    , gnuhealth
     , hasql
     , hasql-pool
     , hasql-th
@@ -301,6 +297,7 @@ test-suite easywordy-test
     , inline-js-core
     , io-streams
     , jose
+    , knowdocs
     , lens
     , lucid
     , markdown
@@ -315,6 +312,7 @@ test-suite easywordy-test
     , profunctors
     , rio
     , safe-exceptions
+    , scenario
     , scientific
     , servant
     , servant-auth
@@ -338,4 +336,5 @@ test-suite easywordy-test
     , warp
     , websockets
     , yaml
+    , z14l
   default-language: Haskell2010

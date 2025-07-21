@@ -2,7 +2,7 @@
 {-# HLINT ignore "Avoid lambda" #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Wapp.Apps.Z14L.Video where
+module Wapp.Internal.Z14L.Video where
 
 import qualified Data.ByteString.Lazy as Lbs
 
@@ -150,7 +150,7 @@ instance Ae.ToJSON TavusProperties where
     Ae.fieldLabelModifier = camelToSnake
   }
 
--- Convert snake_case to camelCase for JSON decoding  
+-- Convert snake_case to camelCase for JSON decoding
 instance Ae.FromJSON TavusResponse where
   parseJSON = Ae.withObject "TavusResponse" $ \o -> TavusResponse
     <$> o Ae..: "conversation_id"
@@ -226,12 +226,12 @@ allowAttr values = Bli.attribute "allow" " allow=\"" (Bli.textValue values)
 
 -- Helper function to convert camelCase to snake_case
 camelToSnake :: String -> String
-camelToSnake = foldr (\c acc -> if isUpper c 
+camelToSnake = foldr (\c acc -> if isUpper c
                                 then '_' : toLower c : acc
                                 else c : acc) []
 
 -- Helper function to convert snake_case to camelCase
 snakeToCamel :: String -> String
 snakeToCamel [] = []
-snakeToCamel ('_':c:cs) = toUpper c : snakeToCamel cs 
+snakeToCamel ('_':c:cs) = toUpper c : snakeToCamel cs
 snakeToCamel (c:cs) = c : snakeToCamel cs

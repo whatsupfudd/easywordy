@@ -42,7 +42,7 @@ import Api.Handlers (anonHandlers, authHandlers)
 -- New routing system:
 import Routing.TopDef (TopRoutes)
 import Routing.TopHandlers (serverApiT)
-import WordPress.Wrapper (beginPhp)
+import Wapp.Internal.WordPress.Wrapper (beginPhp)
 import qualified Assets.Types as S3
 import qualified Assets.Storage as S3
 import Assets.Types (S3Config (..))

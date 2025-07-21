@@ -6,7 +6,7 @@ import Servant.API.Generic (ToServant)
 import Api.Types (EasyVerseApp)
 import Routing.TopDef (TopRoutes (..))
 
-import WordPress.Handlers (wordpressHandlers)
+import Wapp.Internal.WordPress.Handlers (wordpressHandlers)
 import Wapp.Handlers (wappHandlers)
 import Demo.Handlers (demoHandlers)
 -- Old stuff:
