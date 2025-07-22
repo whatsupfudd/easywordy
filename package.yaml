@@ -105,7 +105,6 @@ dependencies:
   # For state management in ws handling loop:
   - mtl
   # For AI:
-  - openai-client
   - http-client >= 0.7.17
   - http-conduit >= 2.3.8
   - http-client-tls >= 0.3.8
@@ -131,7 +130,6 @@ dependencies:
   - knowdocs
   - scenario
   - z14l
-
 
 
 default-extensions:

@@ -81,6 +81,11 @@ data OpenAiOptions = OpenAiOptions {
   }
   deriving stock (Show, Generic)
 
+data AiservOptions = AiservOptions {
+  token :: Maybe Text
+  , server :: Maybe Text
+  }
+  deriving stock (Show, Generic)
 
 newtype TavusOptions = TavusOptions {
   apiKey :: Maybe Text
@@ -107,6 +112,7 @@ data FileOptions = FileOptions {
   , zhopness :: Maybe ZbOptions
   , wapp :: Maybe WappOptions
   , openai :: Maybe OpenAiOptions
+  , aiserv :: Maybe AiservOptions
   , tavus :: Maybe TavusOptions
   , s3store :: Maybe S3Options
  }
@@ -134,6 +140,7 @@ instance Aes.FromJSON CorsOpts
 instance Aes.FromJSON WpOptions
 instance Aes.FromJSON ZbOptions
 instance Aes.FromJSON OpenAiOptions
+instance Aes.FromJSON AiservOptions
 instance Aes.FromJSON WappOptions
 instance Aes.FromJSON TavusOptions
 instance Aes.FromJSON S3Options

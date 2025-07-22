@@ -24,11 +24,11 @@ import qualified HttpSup.CorsPolicy as Hcrs
 
 import qualified Options.Cli as Cl (CliOptions (..), EnvOptions (..))
 import qualified Options.ConfFile as Fo (FileOptions (..), PgDbOpts (..), MqlDbOpts (..), CorsOpts (..), JwtOpts (..), ServerOpts (..)
-                  , WpOptions (..), ZbOptions (..), OpenAiOptions (..), WappOptions (..), TavusOptions (..), S3Options (..))
+                  , WpOptions (..), ZbOptions (..), OpenAiOptions (..), WappOptions (..), TavusOptions (..), S3Options (..), AiservOptions (..))
 import qualified Assets.Types as At
 import qualified Options.Runtime as Rt (RunOptions (..), defaultRun, WpConfig (..), defaultWpConf, PgDbConfig (..), defaultPgDbConf
                 , MqlDbConfig (..), defaultMqlDbConf, ZbConfig (..), defaultZbConf, OpenAiConfig (..), defaultOpenAiConf
-                , WappConfig (..), defaultWappConf, TavusConfig (..), defaultTavusConf)
+                , WappConfig (..), defaultWappConf, TavusConfig (..), defaultTavusConf, AiservConfig (..), defaultAiservConf)
 
 
 type ConfError = Either String ()
@@ -42,6 +42,7 @@ type OpenAiOptIOSt = StateT Rt.OpenAiConfig (StateT Rt.RunOptions IO) ConfError
 type WappOptIOSt = StateT Rt.WappConfig (StateT Rt.RunOptions IO) ConfError
 type TavusOptIOSt = StateT Rt.TavusConfig (StateT Rt.RunOptions IO) ConfError
 type S3OptIOSt = StateT At.S3Config (StateT Rt.RunOptions IO) ConfError
+type AiservOptIOSt = StateT Rt.AiservConfig (StateT Rt.RunOptions IO) ConfError
 
 
 mconf :: MonadState s m => Maybe t -> (t -> s -> s) -> m ()
@@ -100,6 +101,7 @@ mergeOptions cli file env = do
     innerConf (\nVal s -> s { Rt.openai = nVal }) parseOpenAi Rt.defaultOpenAiConf file.openai
     innerConf (\nVal s -> s { Rt.tavus = nVal }) parseTavus Rt.defaultTavusConf file.tavus
     innerConf (\nVal s -> s { Rt.s3store = Just nVal }) parseS3 At.defaultS3Conf file.s3store
+    innerConf (\nVal s -> s { Rt.aiserv = Just nVal }) parseAiserv Rt.defaultAiservConf file.aiserv
     -- pure $ Right ()
 
 
@@ -139,6 +141,13 @@ mergeOptions cli file env = do
     mconf openAiO.apiKey $ \nVal s -> s { Rt.apiKey = Just nVal }
     mconf openAiO.model $ \nVal s -> s { Rt.model = Just nVal }
     pure $ Right ()
+
+  parseAiserv :: Fo.AiservOptions -> AiservOptIOSt
+  parseAiserv aiservO = do
+    mconf aiservO.token $ \nVal s -> s { Rt.token = T.unpack nVal }
+    mconf aiservO.server $ \nVal s -> s { Rt.server = T.unpack nVal }
+    pure $ Right ()
+
 
   parseMqlDb :: Fo.MqlDbOpts -> MqlDbOptIOSt
   parseMqlDb dbO = do

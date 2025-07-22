@@ -1,15 +1,30 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Avoid lambda" #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 module Wapp.Internal.Z14L.Logic where
 
+import Control.Concurrent (threadDelay)
+
 import qualified Data.ByteString as Bs
-import Data.Maybe (fromMaybe)
-import Data.Text (Text, pack)
+import qualified Data.ByteString.Lazy as Lbs
+import Data.Int (Int32)
+import Data.Maybe (fromMaybe, isNothing)
+import Data.Text (Text, pack, unpack)
+import qualified Data.Text.Encoding as T
 import Data.Text.Lazy (fromStrict)
 import Data.Time.Clock (getCurrentTime, diffUTCTime, UTCTime)
 import Data.Time (formatTime, defaultTimeLocale, getZonedTime, ZonedTime)
+import Data.UUID (UUID)
+import qualified Data.UUID as Uu
 
+import GHC.Generics (Generic)
+
+import qualified Network.HTTP.Client as Hc
+import qualified Network.HTTP.Types.Status as Hs
+import qualified Network.HTTP.Client.TLS as Ht
 import qualified Data.Aeson as Ae
+import qualified Data.Aeson.Key as Aek
 
 import Hasql.Pool (Pool)
 
@@ -22,11 +37,6 @@ import qualified Text.Blaze.Svg11 as S
 import qualified Text.Blaze.Svg11.Attributes as Sa
 import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import qualified Text.Markdown as Md
-
-import OpenAI (think)
-import Context (Context(..), Result (..))
-import Action (Action(..))
-import Actions.Chat (CompleteParams(..), ChatVerb(..))
 
 import qualified Options.Runtime as Rt
 import qualified Wapp.AppDef as Wd
@@ -51,21 +61,94 @@ data ChatMessageContent = ChatMessageContent {
   }
 
 
+-- Recover from AI Server package, client versions:
+data InvokeRequest = InvokeRequest { 
+    function :: UUID
+  , context :: Maybe UUID
+  , parameters :: Ae.Value
+  , content :: Text
+  , files :: [UUID]
+  , references :: [UUID]
+  } deriving (Show, Eq, Generic)
+
+instance Ae.ToJSON InvokeRequest where
+  toEncoding = Ae.genericToEncoding Ae.defaultOptions { Ae.omitNothingFields = True }
+
+data InvokeResponse = InvokeResponse { 
+    requestEId :: UUID
+  , contextEId :: UUID
+  , status :: Text
+  , result :: Maybe Text
+  }
+  deriving (Show, Eq, Generic, Ae.FromJSON)
+
+
+data ResponseMsg = ResponseMsg {
+  requestEId :: UUID
+  , contextEId :: UUID
+  , status :: Text
+  , result :: ResponseInfo
+  }
+  deriving (Show, Eq, Generic, Ae.FromJSON)
+
+data ResponseInfo = ResponseInfo {
+  responseEId :: UUID
+  , result :: ResponseContent
+  }
+  deriving (Show, Eq, Generic, Ae.FromJSON)
+
+
+data ResponseContent =
+  TextBlockRK TextBlock
+  | AssetRK AssetRef
+  | NoResponseYetRK
+  deriving (Show, Eq, Generic, Ae.FromJSON)
+
+data TextBlock = TextBlock {
+  content :: Text
+  , format :: Text
+  } deriving (Show, Eq, Generic, Ae.FromJSON)
+
+data AssetRef = AssetRef {
+  assetEId :: UUID
+  , notes :: Maybe Text
+  , size :: Int32
+  } deriving (Show, Eq, Generic, Ae.FromJSON)
+
+
+data ParameterValue = ParameterValue {
+    name :: Text
+  , value :: Text
+  } deriving (Show, Eq, Generic)
+instance Ae.ToJSON ParameterValue where
+  toEncoding aP = Ae.pairs $ (Aek.fromString . unpack) aP.name Ae..= aP.value
+
+-- Structures for the client side:
+data ContentReply =
+  TextCR Text
+  | AssetCR AssetKind UUID
+  | ErrorCR String
+  deriving (Show, Eq)
+
+data AssetKind =
+  ImageAK
+  | VideoAK
+  | AudioAK
+  | FileAK
+  deriving (Show, Eq)
+
+
 receiveMsg :: Wd.InternalFunction
-receiveMsg rtOpts pgDb (jsonParams, content) = do
-  case rtOpts.openai.apiKey of
+receiveMsg rtOpts pgDb (jsonParams, content) =
+  case rtOpts.aiserv of
     Nothing ->
       let
         response = renderHtml $
           H.div H.! A.class_ "text-gray-900 dark:text-gray-100" $
-            H.toHtml ("No OPENAI api key" :: Text)
+            H.toHtml ("No AI service token" :: Text)
       in
       pure . Right $ Wd.BasicFR (response, Nothing)
-    Just aKey ->
-      {-
-      pure . Right $ Bs.toStrict . renderHtml $
-        showMessageR (head (buildMessages "Hello"))
-      -}
+    Just aiConf ->
       case content of
         Nothing ->
           let
@@ -74,16 +157,11 @@ receiveMsg rtOpts pgDb (jsonParams, content) = do
                 H.toHtml ("Need some content to send to AI" :: Text)
           in
           pure . Right $ Wd.BasicFR (response, Nothing)
-        Just aText ->
-          let
-            oaiContext = Simple aKey (fromMaybe "gpt-4o-mini" rtOpts.openai.model)
-            params = SimplePrompt aText
-            action = Complete params
-          in do
+        Just aText -> do
           startTime <- getZonedTime
           putStrLn $ "Model: " <> show rtOpts.openai.model
           putStrLn $ "Prompt: " <> show aText
-          rezA <- think $ Chat action oaiContext
+          rezA <- aiServiceCall aiConf "message" (T.encodeUtf8 aText)
           endTime <- getZonedTime
           case rezA of
             Left errMsg ->
@@ -94,7 +172,7 @@ receiveMsg rtOpts pgDb (jsonParams, content) = do
               in do
               putStrLn $ "@[receiveMsg] err: " <> show errMsg
               pure . Right $ Wd.AppendChildFR (response, Nothing)
-            Right (TextResult reply) ->
+            Right (TextCR reply) ->
               let
                 response = renderHtml $
                   mapM_ showMessageR (buildMessages (aText, startTime) (reply, endTime))
@@ -102,6 +180,104 @@ receiveMsg rtOpts pgDb (jsonParams, content) = do
               putStrLn $ "@[receiveMsg] reply: " <> show reply
               pure . Right $ Wd.AppendChildFR (response, Nothing)
 
+
+aiServiceCall :: Rt.AiservConfig -> Text -> Bs.ByteString -> IO (Either String ContentReply)
+aiServiceCall  aisConf action aText =
+  case getUuidForFunction action of
+    Nothing ->
+      pure . Left $ "Invalid function: " <> unpack action
+    Just functionUUID -> do
+      manager <- Hc.newManager Ht.tlsManagerSettings
+      baseRequest <- Hc.parseRequest $ aisConf.server <> "/invoke"
+      let
+        invokeRequest = InvokeRequest {
+          function = functionUUID
+          , context = Nothing
+          , parameters = Ae.toJSON $ ParameterValue { name = "model", value = "gemini-2.5-flash" }
+          , content = T.decodeUtf8 aText
+          , files = []
+          , references = []
+        }
+        request = baseRequest {
+          Hc.method = "POST"
+          , Hc.requestHeaders = [
+                ("Authorization", "Bearer " <> (T.encodeUtf8 . pack) aisConf.token)
+              , ("Content-Type", "application/json")
+              ]
+          , Hc.requestBody = Hc.RequestBodyLBS (Ae.encode invokeRequest)
+          }
+      -- putStrLn $ "@[aiServiceCall] request: " <> show request
+      -- putStrLn $ "@[aiServiceCall] request body: " <> show (Ae.encode invokeRequest)
+      -- putStrLn $ "@[aiServiceCall] token: " <> aisConf.token
+      response <- Hc.httpLbs request manager
+      case Hs.statusCode response.responseStatus of
+        200 ->
+          case Ae.eitherDecode response.responseBody :: Either String InvokeResponse of
+            Left errMsg -> do
+              putStrLn $ "@[aiServiceCall] error decoding request reply: " <> show response.responseBody
+              pure $ Left errMsg
+            Right invResp ->
+              case invResp.status of
+                "OK" ->
+                  waitForResponse manager aisConf invResp.requestEId 0
+                _ -> pure . Left $ "@[aiServiceCall] ai server api err: " <> unpack invResp.status
+        _ -> do
+          putStrLn $ "@[aiServiceCall] http body: " <> show response.responseBody
+          pure . Left $ "@[aiServiceCall] http err: " <> show (Hs.statusCode response.responseStatus) <> ", body: " <> show response.responseBody
+
+
+waitForResponse :: Hc.Manager -> Rt.AiservConfig -> UUID -> Int32 -> IO (Either String ContentReply)
+waitForResponse manager aisConf requestEId iterCount= do
+  baseRequest <- Hc.parseRequest $ aisConf.server <> "/invoke/response?tid=" <> show requestEId
+  let
+    request = baseRequest {
+      Hc.method = "GET"
+      , Hc.requestHeaders = [("Authorization", "Bearer " <> (T.encodeUtf8 . pack) aisConf.token)]
+    }
+  response <- Hc.httpLbs request manager
+  case Hs.statusCode response.responseStatus of
+    200 ->
+      case Ae.eitherDecode response.responseBody :: Either String ResponseMsg of
+        Left errMsg -> do
+          putStrLn $ "@[waitForResponse] error decoding request reply: " <> show response.responseBody
+          pure $ Left errMsg
+        Right respMsg ->
+          case respMsg.status of
+            "OK" ->
+              case respMsg.result.result of
+                NoResponseYetRK ->
+                  if iterCount > 30 then
+                    pure . Left $ "@[waitForResponse] ai server api err: " <> unpack respMsg.status
+                  else do
+                    threadDelay 1000000
+                    waitForResponse manager aisConf requestEId (iterCount + 1)
+                TextBlockRK aTextBlock ->
+                  pure . Right $ TextCR aTextBlock.content
+                AssetRK aAssetRef ->
+                  pure . Right $ AssetCR ImageAK aAssetRef.assetEId
+                -- Keep this as an inverse warning: if it's redundant, it means all possible case values are covered.
+                _ -> pure . Left $ "@[waitForResponse] ai server api err: " <> unpack respMsg.status
+    _ ->
+      pure . Left $ "@[waitForResponse] http err: " <> show (Hs.statusCode response.responseStatus)
+
+getUuidForFunction :: Text -> Maybe UUID
+getUuidForFunction aText =
+  {- hard-coded for now, using Google:
+  # text_to_speech   | 2eaacb33-471b-4d89-8509-bc242ae3e00e
+  # text_to_video    | b4a85bf1-3efd-4b9b-8f08-1d67fe8a83b7
+  # text_to_image    | 30083aad-5897-4881-83ba-f26ddbb925a0
+  # message          | 0de56430-c761-4be6-a6c9-7ea965ea56d6
+  # chain_of_thought | 3057bc2b-a12b-4378-a7f7-4f570255fb8b
+  # edit_image       | da1f6658-e07f-4464-9cfd-20c73c4651c9
+  -}
+  case aText of
+    "text_to_speech" -> Uu.fromString "2eaacb33-471b-4d89-8509-bc242ae3e00e"
+    "text_to_video" -> Uu.fromString "b4a85bf1-3efd-4b9b-8f08-1d67fe8a83b7"
+    "text_to_image" -> Uu.fromString "30083aad-5897-4881-83ba-f26ddbb925a0"
+    "message" -> Uu.fromString "0de56430-c761-4be6-a6c9-7ea965ea56d6"
+    "chain_of_thought" -> Uu.fromString "3057bc2b-a12b-4378-a7f7-4f570255fb8b"
+    "edit_image" -> Uu.fromString "da1f6658-e07f-4464-9cfd-20c73c4651c9"
+    _ -> Nothing
 
 
 showMessageR :: ChatMessage -> H.Html

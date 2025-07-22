@@ -5,6 +5,7 @@ module Options.Runtime (
   , OpenAiConfig (..), defaultOpenAiConf
   , WappConfig (..), defaultWappConf
   , TavusConfig (..), defaultTavusConf
+  , AiservConfig (..), defaultAiservConf
   , module DB.Connect
 
 ) where
@@ -43,17 +44,28 @@ data OpenAiConfig = OpenAiConfig {
   }
   deriving (Show)
 
-
-defaultZbConf :: FilePath -> ZbConfig
-defaultZbConf homeDir = ZbConfig {
-  zbRootPath = homeDir <> "/ZhopNess"
-  }
-
-
 defaultOpenAiConf :: OpenAiConfig
 defaultOpenAiConf = OpenAiConfig {
   apiKey = Nothing
   , model = Nothing
+  }
+
+data AiservConfig = AiservConfig {
+  token :: String
+  , server :: String
+  }
+  deriving (Show)
+
+defaultAiservConf :: AiservConfig
+defaultAiservConf = AiservConfig {
+  token = ""
+  , server = ""
+  }
+
+
+defaultZbConf :: FilePath -> ZbConfig
+defaultZbConf homeDir = ZbConfig {
+  zbRootPath = homeDir <> "/ZhopNess"
   }
 
 
@@ -91,6 +103,7 @@ data RunOptions = RunOptions {
     , zb :: ZbConfig
     , wapp :: WappConfig
     , openai :: OpenAiConfig
+    , aiserv :: Maybe AiservConfig
     , tavus :: TavusConfig
     , s3store :: Maybe S3Config
   }
@@ -110,6 +123,7 @@ defaultRun homeDir homeConfig server port =
     , zb = defaultZbConf homeDir
     , wapp = defaultWappConf homeDir
     , openai = defaultOpenAiConf
+    , aiserv = Nothing
     , tavus = defaultTavusConf
     , s3store = Nothing
   }

@@ -125,7 +125,6 @@ library
     , mmark
     , mtl
     , mysql-haskell
-    , openai-client
     , optparse-applicative
     , postgresql-binary
     , profunctors
@@ -215,7 +214,6 @@ executable easywordy
     , mmark
     , mtl
     , mysql-haskell
-    , openai-client
     , optparse-applicative
     , postgresql-binary
     , profunctors
@@ -306,7 +304,6 @@ test-suite easywordy-test
     , mmark
     , mtl
     , mysql-haskell
-    , openai-client
     , optparse-applicative
     , postgresql-binary
     , profunctors
