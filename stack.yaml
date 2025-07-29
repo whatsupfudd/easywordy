@@ -69,6 +69,7 @@ extra-deps:
   - ../Wapp/Lib/Natives/KnowDocs
   - ../Wapp/Lib/Natives/Scenario
   - ../Wapp/Lib/Natives/Z14L
+  - ../Wapp/Lib/Natives/Complexor
   - ../Wapp/Lib/Natives/General
 
 #  - servant-docs

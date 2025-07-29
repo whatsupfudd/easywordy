@@ -14,6 +14,7 @@ import qualified Wapp.Apps.Aox.Logic as Aop
 import qualified Wapp.Apps.Aox.Test as Aot
 import qualified Wapp.Apps.GnuHealth.Logic as Ghlt
 import qualified Wapp.Apps.KnowDocs.DbOps as Kd
+import qualified Wapp.Apps.Complexor.DbOps as Cplx
 
 
 -- Logic defined within the EasyWordy app:
@@ -44,20 +45,23 @@ buildInternalLibrary = Mp.fromList [
 -- TODO: How to initialize this from an external file?
 buildNativeLibrary :: Wd.NativeLibMap
 buildNativeLibrary = Mp.fromList [
-  ("scenario.prez", Mp.fromList [
-    ("getTopLevelPrez", Sc.getTopLevelPrez)
-    , ("getActsForPrez", Sc.getActsForPrez)
-    , ("getFullPrezTree", Sc.getFullPrezTree)
-  ])
-  , ("aox.mb", Mp.fromList [
-    ("getUserMailboxes", Aop.getUserMailboxes)
-  ])
-  , ("gnuhealth.dbops", Mp.fromList [
-    ("gnuhealth_conf_commands", Ghlt.gnuhealth_conf_commands)
-  ])
-  , ("knowdocs.dbops", Mp.fromList [
-    ("getKnowDocs", Kd.getKnowDocs)
-    , ("getDocTree", Kd.getDocTree)
-    , ("addNewDocument", Kd.addNewDocument)
-  ])
+    ("scenario.prez", Mp.fromList [
+      ("getTopLevelPrez", Sc.getTopLevelPrez)
+      , ("getActsForPrez", Sc.getActsForPrez)
+      , ("getFullPrezTree", Sc.getFullPrezTree)
+    ])
+    , ("aox.mb", Mp.fromList [
+      ("getUserMailboxes", Aop.getUserMailboxes)
+    ])
+    , ("gnuhealth.dbops", Mp.fromList [
+      ("gnuhealth_conf_commands", Ghlt.gnuhealth_conf_commands)
+    ])
+    , ("knowdocs.dbops", Mp.fromList [
+      ("getKnowDocs", Kd.getKnowDocs)
+      , ("getDocTree", Kd.getDocTree)
+      , ("addNewDocument", Kd.addNewDocument)
+    ])
+    , ("complexor.dbops", Mp.fromList [
+      ("getAllHistory", Cplx.getReposAndCommitLogs)
+    ])
   ]

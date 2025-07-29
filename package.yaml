@@ -130,6 +130,7 @@ dependencies:
   - knowdocs
   - scenario
   - z14l
+  - complexor
 
 
 default-extensions:

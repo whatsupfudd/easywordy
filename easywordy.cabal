@@ -93,6 +93,7 @@ library
     , blaze-svg
     , bytestring
     , case-insensitive
+    , complexor
     , conduit
     , connection >=0.3.2
     , containers
@@ -181,6 +182,7 @@ executable easywordy
     , blaze-svg
     , bytestring
     , case-insensitive
+    , complexor
     , conduit
     , connection >=0.3.2
     , containers
@@ -271,6 +273,7 @@ test-suite easywordy-test
     , blaze-svg
     , bytestring
     , case-insensitive
+    , complexor
     , conduit
     , connection >=0.3.2
     , containers
