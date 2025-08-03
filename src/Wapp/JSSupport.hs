@@ -14,7 +14,7 @@ import qualified Data.ByteString as Bs
 import qualified Data.Map as Mp
 import Data.Text (Text, unpack, pack)
 import qualified Data.Text.IO as Tio
-import Data.Text.Encoding (encodeUtf8)
+import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Data.UUID (UUID, fromString)
 import GHC.Generics ( Generic )
 
@@ -130,7 +130,7 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
   let
     libExec :: JSExecSupport -> ExecParams -> IO LBS.ByteString
     libExec jsSupport execParams = do
-      putStrLn $ "@[libExec] execParams: " <> show execParams
+      putStrLn $ "@[libEx/0] execParams: " <> show execParams
       case mbDb of
         Just dbPool -> do
           case Mp.lookup execParams.package jsSupport.hsLibs of
@@ -140,13 +140,17 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
                   eiActs <- fct dbPool (execParams.params, Nothing)
                   case eiActs of
                     Left err -> do
-                      putStrLn $ "@[libExec] error fetching acts: " <> err
-                      pure $ LBS.fromStrict $ encodeUtf8 $ "ERROR: " <> pack err
+                      putStrLn $ "@[libEx/1] error fetching acts: " <> err
+                      pure $ LBS.fromStrict $ encodeUtf8 $ "@[libEx/1] err acts: " <> pack err
                     Right rez -> do
-                      putStrLn $ "@[libExec] acts: " <> show rez
+                      putStrLn $ "@[libEx/2] acts: " <> show rez
                       pure rez
                 Nothing ->
-                  pure $ "@[libExec] package " <> (LBS.fromStrict . encodeUtf8) execParams.package <> ", action not found: " <> (LBS.fromStrict . encodeUtf8) execParams.action
+                  let
+                    errMsg = "@[libEx/5] package " <> (LBS.fromStrict . encodeUtf8) execParams.package <> ", action not found: " <> (LBS.fromStrict . encodeUtf8) execParams.action
+                  in do
+                  putStrLn $ (unpack . decodeUtf8 . LBS.toStrict) errMsg
+                  pure errMsg
                   {-- TMP: fake a fetchPresentation call, for app z14l.
                   do
                   let
@@ -169,11 +173,11 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
                           pure prez
                   -}
             Nothing -> do
-              putStrLn $ "@[libExec] package not found: " <> unpack execParams.package
-              pure $ "@[libExec] package not found: " <> (LBS.fromStrict . encodeUtf8) execParams.package
+              putStrLn $ "@[libEx/3] package not found: " <> unpack execParams.package
+              pure $ "@[libEx/3] package not found: " <> (LBS.fromStrict . encodeUtf8) execParams.package
         Nothing -> do
-          putStrLn "@[libExec]: no database pool"
-          pure "@[libExec]: no database pool"
+          putStrLn "@[libEx/4]: no database pool"
+          pure "@[libEx/4]: no database pool"
       -- putStrLn $ "@[libExec] jsonParams: " <> show jsonParams
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName

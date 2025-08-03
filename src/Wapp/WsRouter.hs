@@ -1,7 +1,7 @@
 module Wapp.WsRouter where
 
 import Control.Monad.IO.Class (liftIO)
-import Control.Exception (try, SomeException)
+import Control.Exception (try, SomeException, displayException)
 
 import qualified Data.ByteString as Bs
 import qualified Data.ByteString.Lazy as Lbs
@@ -62,8 +62,8 @@ routeRequest refEnv execCtxt hxMsg anID requestParams =
               rezA <- try $ Jss.runElmFunction jsSupport execCtxt.liveApp.db moduleName fctName requestParams
               case rezA of
                 Left err -> do
-                  putStrLn $ "@[routeRequest] Jss.runElmFunction err: " <> show (err :: SomeException)
-                  pure . Left $ "ERROR: Jss.runElmFunction err: " <> show (err :: SomeException)
+                  putStrLn $ "@[routeRequest] Jss.runElmFunction err: " <> displayException (err :: SomeException)
+                  pure . Left $ "ERROR: Jss.runElmFunction err: " <> displayException (err :: SomeException)
                 Right jsReturn -> do
                   putStrLn "@[routeRequest] Jss.runElmFunction finished."
                   case jsReturn.result of

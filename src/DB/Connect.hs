@@ -11,7 +11,7 @@ import Data.Time.Clock (DiffTime)
 import GHC.Word (Word16)
 
 import qualified Hasql.Connection as DbConn
-import           Hasql.Pool (Pool, acquire, release)
+import Hasql.Pool (Pool, acquire, release)
 
 import qualified Database.MySQL.Base as Msql
 

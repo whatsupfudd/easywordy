@@ -12,7 +12,7 @@ import qualified Wapp.Internal.Z14L.Video as Cv
 import qualified Wapp.Apps.Scenario.Presentation.DbOps as Sc
 import qualified Wapp.Apps.Aox.Logic as Aop
 import qualified Wapp.Apps.Aox.Test as Aot
-import qualified Wapp.Apps.GnuHealth.Logic as Ghlt
+import qualified Wapp.Apps.GnuHealth.FctDispatcher as Gdb
 import qualified Wapp.Apps.KnowDocs.DbOps as Kd
 import qualified Wapp.Apps.Complexor.DbOps as Cplx
 
@@ -54,7 +54,8 @@ buildNativeLibrary = Mp.fromList [
       ("getUserMailboxes", Aop.getUserMailboxes)
     ])
     , ("gnuhealth.dbops", Mp.fromList [
-      ("gnuhealth_conf_commands", Ghlt.gnuhealth_conf_commands)
+        -- ("gnuhealth_conf_commands", Ghlt.gnuhealth_conf_commands)
+        ("general_tree_loader", Gdb.dispatch)
     ])
     , ("knowdocs.dbops", Mp.fromList [
       ("getKnowDocs", Kd.getKnowDocs)
