@@ -57,17 +57,30 @@ routeRequest refEnv execCtxt hxMsg anID requestParams =
           case execCtxt.jsSupport of
             Nothing -> do
               putStrLn "@[routeRequest] no jsSupport."
-              pure . Left $ "ERROR: no jsSupport."
+              pure . Left $ "@[routeRequest]: no jsSupport."
             Just jsSupport -> do
               rezA <- try $ Jss.runElmFunction jsSupport execCtxt.liveApp.db moduleName fctName requestParams
               case rezA of
-                Left err -> do
-                  putStrLn $ "@[routeRequest] Jss.runElmFunction err: " <> displayException (err :: SomeException)
-                  pure . Left $ "ERROR: Jss.runElmFunction err: " <> displayException (err :: SomeException)
+                Left err ->
+                  let
+                    errMsg = "@[routeRequest] Jss.runElmFunction err: " <> displayException (err :: SomeException)
+                  in do
+                  putStrLn errMsg
+                  pure . Left $ errMsg
                 Right jsReturn -> do
                   putStrLn "@[routeRequest] Jss.runElmFunction finished."
                   case jsReturn.result of
                     "ok" ->
                       pure . Right $ Wd.BasicFR (Lbs.fromStrict . T.encodeUtf8 $ jsReturn.content, jsReturn.container)
                     "err" ->
-                      pure . Left $ "ERROR: " <> T.unpack jsReturn.content
+                      let
+                        errMsg = "@[routeRequest] Jss.runElmFunction jsReturn.result err: " <> T.unpack jsReturn.content
+                      in do
+                      putStrLn errMsg
+                      pure . Left $ errMsg
+                    _ ->
+                      let
+                        errMsg = "@[routeRequest] Jss.runElmFunction jsReturn.result unknown: " <> T.unpack jsReturn.result
+                      in do
+                      putStrLn errMsg
+                      pure . Left $ errMsg

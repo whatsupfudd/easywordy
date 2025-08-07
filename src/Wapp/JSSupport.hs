@@ -82,6 +82,11 @@ runElmTest (Aeson -> aPath) = do
   putStrLn "@[runElmTest] finishing."
   return rsA
 
+newtype NativeError = NativeError {
+    msg :: Text
+  }
+  deriving (Generic, Show, Ae.ToJSON)
+
 
 initJS :: FilePath -> Text -> IO (Session, JSVal)
 initJS libPath moduleName = do
@@ -141,16 +146,16 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
                   case eiActs of
                     Left err -> do
                       putStrLn $ "@[libEx/1] error fetching acts: " <> err
-                      pure $ LBS.fromStrict $ encodeUtf8 $ "@[libEx/1] err acts: " <> pack err
+                      pure $ Ae.encode $ NativeError { msg = "@[libEx/1] err acts: " <> pack err }
                     Right rez -> do
                       putStrLn $ "@[libEx/2] acts: " <> show rez
                       pure rez
                 Nothing ->
                   let
-                    errMsg = "@[libEx/5] package " <> (LBS.fromStrict . encodeUtf8) execParams.package <> ", action not found: " <> (LBS.fromStrict . encodeUtf8) execParams.action
+                    errMsg = "@[libEx/5] package " <> execParams.package <> ", action not found: " <> execParams.action
                   in do
-                  putStrLn $ (unpack . decodeUtf8 . LBS.toStrict) errMsg
-                  pure errMsg
+                  putStrLn $ unpack errMsg
+                  pure $ Ae.encode $ NativeError { msg = errMsg }
                   {-- TMP: fake a fetchPresentation call, for app z14l.
                   do
                   let
@@ -174,10 +179,10 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
                   -}
             Nothing -> do
               putStrLn $ "@[libEx/3] package not found: " <> unpack execParams.package
-              pure $ "@[libEx/3] package not found: " <> (LBS.fromStrict . encodeUtf8) execParams.package
+              pure $ Ae.encode $ NativeError { msg = "@[libEx/3] package not found: " <> execParams.package }
         Nothing -> do
           putStrLn "@[libEx/4]: no database pool"
-          pure "@[libEx/4]: no database pool"
+          pure $ Ae.encode $ NativeError { msg = "@[libEx/4]: no database pool" }
       -- putStrLn $ "@[libExec] jsonParams: " <> show jsonParams
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
     fctNameLBS = LBS.fromStrict . encodeUtf8 $ functionName
