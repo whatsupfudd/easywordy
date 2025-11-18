@@ -103,6 +103,7 @@ library
     , fsnotify
     , gitrev
     , gnuhealth
+    , goldfann
     , hasql
     , hasql-pool
     , hasql-th
@@ -193,6 +194,7 @@ executable easywordy
     , fsnotify
     , gitrev
     , gnuhealth
+    , goldfann
     , hasql
     , hasql-pool
     , hasql-th
@@ -284,6 +286,7 @@ test-suite easywordy-test
     , fsnotify
     , gitrev
     , gnuhealth
+    , goldfann
     , hasql
     , hasql-pool
     , hasql-th

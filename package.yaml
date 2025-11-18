@@ -131,6 +131,7 @@ dependencies:
   - scenario
   - z14l
   - complexor
+  - goldfann
 
 
 default-extensions:

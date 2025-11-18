@@ -15,6 +15,7 @@ import qualified Wapp.Apps.Aox.Test as Aot
 import qualified Wapp.Apps.GnuHealth.FctDispatcher as Gdb
 import qualified Wapp.Apps.KnowDocs.DbOps as Kd
 import qualified Wapp.Apps.Complexor.DbOps as Cplx
+import qualified Wapp.Apps.GoldFann.Ops as Gfo
 
 
 -- Logic defined within the EasyWordy app:
@@ -56,5 +57,9 @@ buildNativeLibrary = Mp.fromList [
     ])
     , ("complexor.dbops", Mp.fromList [
       ("getAllHistory", Cplx.getReposAndCommitLogs)
+    ])
+    , ("goldfann.ops", Mp.fromList [
+      ("getCategoryTree", Gfo.getCategoryTree)
+      , ("getDocs", Gfo.getDocs)
     ])
   ]

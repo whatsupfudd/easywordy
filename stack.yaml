@@ -71,6 +71,7 @@ extra-deps:
   - ../Wapp/Lib/Natives/Z14L
   - ../Wapp/Lib/Natives/Complexor
   - ../Wapp/Lib/Natives/General
+  - ../Wapp/Lib/Natives/GoldFann
 
 #  - servant-docs
 #  - servant-foreign
