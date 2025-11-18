@@ -152,7 +152,7 @@ type InternalFunction = Rt.RunOptions -> Hp.Pool -> ClientArgs -> IO (Either Str
 type NativeLibFunction = Hp.Pool -> NativeFctArgs -> IO (Either String Lbs.ByteString)
 type ExternalFunction = (Text, Text, Text)
 
--- Map of packages = Map of Internal function name -> Haskell function (defined as Function: <package>: function_name in app yaml definition). 
+-- Map of packages = Map of Internal function name -> Haskell function (defined as Function: <package>: function_name in app yaml definition).
 type LibraryMap = Mp.Map Text (Mp.Map Text InternalFunction)
 
 -- Map of packages, each package -> map of hsForward name -> Haskell function:
@@ -188,7 +188,7 @@ data ResolvedApp = ResolvedApp {
 -- Support for doing the resolution of resources referred to by an app definition:
 data FctResolver = FctResolver {
   resolveLib :: PairReference -> Either String PairReference
-  , resolveFct :: Mp.Map Text Text ->FunctionDef -> Either String (Text, RouteLogic)
+  , resolveFct :: Mp.Map Text Text -> FunctionDef -> Either String (Text, RouteLogic)
   }
 
 

@@ -206,9 +206,9 @@ aiServiceCall  aisConf action aText =
               ]
           , Hc.requestBody = Hc.RequestBodyLBS (Ae.encode invokeRequest)
           }
-      -- putStrLn $ "@[aiServiceCall] request: " <> show request
-      -- putStrLn $ "@[aiServiceCall] request body: " <> show (Ae.encode invokeRequest)
-      -- putStrLn $ "@[aiServiceCall] token: " <> aisConf.token
+      putStrLn $ "@[aiServiceCall] request: " <> show request
+      putStrLn $ "@[aiServiceCall] request body: " <> show (Ae.encode invokeRequest)
+      putStrLn $ "@[aiServiceCall] token: " <> aisConf.token
       response <- Hc.httpLbs request manager
       case Hs.statusCode response.responseStatus of
         200 ->

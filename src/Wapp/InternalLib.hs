@@ -30,14 +30,6 @@ buildInternalLibrary = Mp.fromList [
       ("receiveMsg", Cl.receiveMsg)
       , ("startVideoSession", Cv.startSession)
     ])
-    {-, ("internal.scenario", Mp.fromList [
-      ("browsePrez", Sc.browsePrez)
-    ])
-    -}
-    {- , ("internal.aox", Mp.fromList [
-      ("getUserMailboxes", Aot.getUserMailboxes)
-    ])
-    --}
   ]
 
 
