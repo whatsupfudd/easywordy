@@ -16,6 +16,7 @@ import qualified Wapp.Apps.GnuHealth.FctDispatcher as Gdb
 import qualified Wapp.Apps.KnowDocs.DbOps as Kd
 import qualified Wapp.Apps.Complexor.DbOps as Cplx
 import qualified Wapp.Apps.GoldFann.Ops as Gfo
+import qualified Wapp.Apps.KdofA.Ops as Kdo
 
 
 -- Logic defined within the EasyWordy app:
@@ -61,5 +62,10 @@ buildNativeLibrary = Mp.fromList [
     , ("goldfann.ops", Mp.fromList [
       ("getCategoryTree", Gfo.getCategoryTree)
       , ("getDocs", Gfo.getDocs)
+      , ("getDocContent", Gfo.getDocContent)
+    ])
+    , ("kdofa.ops", Mp.fromList [
+      ("startImageBrowse", Kdo.startImageBrowse)
+      , ("fetchImageSet", Kdo.fetchImageSet)
     ])
   ]

@@ -171,14 +171,14 @@ receiveMsg rtOpts pgDb (jsonParams, content) =
                     H.toHtml errMsg
               in do
               putStrLn $ "@[receiveMsg] err: " <> show errMsg
-              pure . Right $ Wd.AppendChildFR (response, Nothing)
+              pure . Right $ Wd.AppendChildOOBFR (response, Nothing)
             Right (TextCR reply) ->
               let
                 response = renderHtml $
                   mapM_ showMessageR (buildMessages (aText, startTime) (reply, endTime))
               in do
               putStrLn $ "@[receiveMsg] reply: " <> show reply
-              pure . Right $ Wd.AppendChildFR (response, Nothing)
+              pure . Right $ Wd.AppendChildOOBFR (response, Nothing)
 
 
 aiServiceCall :: Rt.AiservConfig -> Text -> Bs.ByteString -> IO (Either String ContentReply)

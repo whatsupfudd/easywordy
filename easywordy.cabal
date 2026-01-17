@@ -118,6 +118,7 @@ library
     , inline-js-core
     , io-streams
     , jose
+    , kdofa
     , knowdocs
     , lens
     , lucid
@@ -209,6 +210,7 @@ executable easywordy
     , inline-js-core
     , io-streams
     , jose
+    , kdofa
     , knowdocs
     , lens
     , lucid
@@ -301,6 +303,7 @@ test-suite easywordy-test
     , inline-js-core
     , io-streams
     , jose
+    , kdofa
     , knowdocs
     , lens
     , lucid

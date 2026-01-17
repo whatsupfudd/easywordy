@@ -280,12 +280,16 @@ wsStreamInit appID conn = do
                                   Nothing -> ""
                                 (modifiers, body, mbContainer) = case aReply of
                                   BasicFR (aHtml, mbText) -> ("", aHtml, mbText)
-                                  AppendChildFR (aHtml, mbText) -> ("hx-swap-oob=\"beforeend\"", aHtml, mbText)
-                                  AfterEndFR (aHtml, mbText) -> ("hx-swap-oob=\"afterend\"", aHtml, mbText)
+                                  AppendChildOOBFR (aHtml, mbText) -> ("hx-swap-oob=\"beforeend\"", aHtml, mbText)
+                                  AfterEndOOBFR (aHtml, mbText) -> ("hx-swap-oob=\"afterend\"", aHtml, mbText)
                                 response = case mbContainer of
                                   Nothing -> "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
-                                  Just customEle -> "<" <> (Bs.fromStrict . encodeUtf8) customEle <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</" <> (Bs.fromStrict . encodeUtf8) customEle <> ">"
-                              in
+                                  Just customEle ->
+                                    case customEle of
+                                      "---" -> body
+                                      _ -> "<" <> (Bs.fromStrict . encodeUtf8) customEle <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</" <> (Bs.fromStrict . encodeUtf8) customEle <> ">"
+                              in do
+                              liftIO . putStrLn $ "@[clientIteration] customEle: " <> show mbContainer
                               liftIO $ WS.sendTextData conn response
               OutOfBandReplyAE aMsg -> do
                 liftIO . P.putStrLn $ "@[clientIteration] out-of-band reply."
@@ -337,11 +341,14 @@ wsStreamInit appID conn = do
                               Nothing -> ""
                             (modifiers, body, mbContainer) = case aReply of
                               BasicFR (aHtml, mbText) -> ("", aHtml, mbText)
-                              AppendChildFR (aHtml, mbText) -> ("hx-swap-oob=\"beforeend\"", aHtml, mbText)
-                              AfterEndFR (aHtml, mbText) -> ("hx-swap-oob=\"afterend\"", aHtml, mbText)
+                              AppendChildOOBFR (aHtml, mbText) -> ("hx-swap-oob=\"beforeend\"", aHtml, mbText)
+                              AfterEndOOBFR (aHtml, mbText) -> ("hx-swap-oob=\"afterend\"", aHtml, mbText)
                             response = case mbContainer of
                                   Nothing -> "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</div>"
-                                  Just customEle -> "<" <> (Bs.fromStrict . encodeUtf8) customEle <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</" <> (Bs.fromStrict . encodeUtf8) customEle <> ">"
+                                  Just customEle -> case customEle of
+                                    "---" -> "<div" <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s)
+                                          <> " hx-swap=\"outerHTML\" hx-swap-oob=\"beforeend\">" <> body <> "</div>"
+                                    _ -> "<" <> (Bs.fromStrict . encodeUtf8) customEle <> (case Bs.unwords [target, modifiers] of " " -> ""; s -> " " <> s) <> ">" <> body <> "</" <> (Bs.fromStrict . encodeUtf8) customEle <> ">"
                           in
                           liftIO $ WS.sendTextData conn response
               Just aText ->

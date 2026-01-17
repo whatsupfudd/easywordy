@@ -132,6 +132,7 @@ dependencies:
   - z14l
   - complexor
   - goldfann
+  - kdofa
 
 
 default-extensions:

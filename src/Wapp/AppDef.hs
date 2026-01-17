@@ -162,8 +162,8 @@ type NativeLibMap = Mp.Map Text (Mp.Map Text NativeLibFunction)
 
 data FunctionReply =
   BasicFR (Lbs.ByteString, Maybe Text)
-  | AppendChildFR (Lbs.ByteString, Maybe Text)
-  | AfterEndFR (Lbs.ByteString, Maybe Text)
+  | AppendChildOOBFR (Lbs.ByteString, Maybe Text)
+  | AfterEndOOBFR (Lbs.ByteString, Maybe Text)
  deriving (Generic, Show)
 
 
