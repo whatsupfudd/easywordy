@@ -138,7 +138,7 @@ FOR EACH ROW EXECUTE FUNCTION ewuser.set_updated_at();
 
 CREATE TABLE IF NOT EXISTS ewuser.user_emails (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  user_fk     uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
   email       citext NOT NULL,
   is_primary  boolean NOT NULL DEFAULT false,
   is_verified boolean NOT NULL DEFAULT false,
@@ -152,15 +152,15 @@ ON ewuser.user_emails(email);
 
 -- At most one primary email per user
 CREATE UNIQUE INDEX IF NOT EXISTS ux_user_emails_primary_per_user
-ON ewuser.user_emails(user_id)
+ON ewuser.user_emails(user_fk)
 WHERE is_primary;
 
 -- Helpful lookup
-CREATE INDEX IF NOT EXISTS ix_user_emails_user_id
-ON ewuser.user_emails(user_id);
+CREATE INDEX IF NOT EXISTS ix_user_emails_user_fk
+ON ewuser.user_emails(user_fk);
 
 CREATE TABLE IF NOT EXISTS ewuser.user_profile (
-  user_id    uuid PRIMARY KEY REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  user_fk    uuid PRIMARY KEY REFERENCES ewuser.users(id) ON DELETE CASCADE,
   avatar_url text,
   locale     text,
   timezone   text,
@@ -178,7 +178,7 @@ FOR EACH ROW EXECUTE FUNCTION ewuser.set_updated_at();
 
 -- Store password hashes as PHC strings (Argon2id recommended)
 CREATE TABLE IF NOT EXISTS ewuser.password_credentials (
-  user_id             uuid PRIMARY KEY REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  user_fk             uuid PRIMARY KEY REFERENCES ewuser.users(id) ON DELETE CASCADE,
   password_hash       text NOT NULL,
   password_updated_at timestamptz NOT NULL DEFAULT now(),
   must_change         boolean NOT NULL DEFAULT false
@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS ewuser.identity_providers (
   authorization_url text,
   token_url         text,
   jwks_url          text,
-  client_id         text,
+  client_fk         text,
   client_secret_enc bytea,         -- encrypted at rest by application
   config            jsonb NOT NULL DEFAULT '{}'::jsonb,
   is_enabled        boolean NOT NULL DEFAULT true,
@@ -205,24 +205,24 @@ CREATE TABLE IF NOT EXISTS ewuser.identity_providers (
   UNIQUE(name)
 );
 
-CREATE TRIGGER trg_identity_providers_updated_at
+CREATE TRIGGER trg_fkentity_providers_updated_at
 BEFORE UPDATE ON ewuser.identity_providers
 FOR EACH ROW EXECUTE FUNCTION ewuser.set_updated_at();
 
 -- provider+subject is the stable key (OIDC sub, broker subject, etc.)
-CREATE TABLE IF NOT EXISTS ewuser.external_identities (
+CREATE TABLE IF NOT EXISTS ewuser.external_fkentities (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
-  provider_id   uuid NOT NULL REFERENCES ewuser.identity_providers(id) ON DELETE RESTRICT,
+  user_fk       uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  provider_fk   uuid NOT NULL REFERENCES ewuser.identity_providers(id) ON DELETE RESTRICT,
   subject       text NOT NULL,
   email_hint    citext,
   created_at    timestamptz NOT NULL DEFAULT now(),
   last_seen_at  timestamptz,
-  UNIQUE(provider_id, subject)
+  UNIQUE(provider_fk, subject)
 );
 
-CREATE INDEX IF NOT EXISTS ix_external_identities_user_id
-ON ewuser.external_identities(user_id);
+CREATE INDEX IF NOT EXISTS ix_external_fkentities_user_fk
+ON ewuser.external_fkentities(user_fk);
 
 -- -----------------------------------------------------------------------------
 -- OAuth/OIDC flow state (PKCE / nonce / replay protection)
@@ -230,7 +230,7 @@ ON ewuser.external_identities(user_id);
 
 CREATE TABLE IF NOT EXISTS ewuser.oauth_flows (
   state              text PRIMARY KEY,
-  provider_id         uuid NOT NULL REFERENCES ewuser.identity_providers(id) ON DELETE CASCADE,
+  provider_fk         uuid NOT NULL REFERENCES ewuser.identity_providers(id) ON DELETE CASCADE,
   code_verifier_hash  bytea,     -- hash(verifier), so verifier itself isn't stored
   nonce               text,
   redirect_to         text,
@@ -247,8 +247,8 @@ ON ewuser.oauth_flows(expires_at);
 
 CREATE TABLE IF NOT EXISTS ewuser.contexts (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
-  wapp_id     uuid NOT NULL,
+  user_fk     uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  wapp_fk     uuid NOT NULL,
   status      text NOT NULL DEFAULT 'active',
   title       text,
   state_json  jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -262,7 +262,7 @@ BEFORE UPDATE ON ewuser.contexts
 FOR EACH ROW EXECUTE FUNCTION ewuser.set_updated_at();
 
 CREATE INDEX IF NOT EXISTS ix_contexts_user_wapp
-ON ewuser.contexts(user_id, wapp_id);
+ON ewuser.contexts(user_fk, wapp_fk);
 
 -- -----------------------------------------------------------------------------
 -- Sessions: represent client connections; attached to contexts
@@ -270,8 +270,8 @@ ON ewuser.contexts(user_id, wapp_id);
 
 CREATE TABLE IF NOT EXISTS ewuser.sessions (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
-  context_id   uuid REFERENCES ewuser.contexts(id) ON DELETE SET NULL,
+  user_fk      uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  context_fk   uuid REFERENCES ewuser.contexts(id) ON DELETE SET NULL,
   kind         ewuser.session_kind NOT NULL DEFAULT 'browser',
   created_at   timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
@@ -281,17 +281,17 @@ CREATE TABLE IF NOT EXISTS ewuser.sessions (
   meta         jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
-CREATE INDEX IF NOT EXISTS ix_sessions_user_id
-ON ewuser.sessions(user_id);
+CREATE INDEX IF NOT EXISTS ix_sessions_user_fk
+ON ewuser.sessions(user_fk);
 
-CREATE INDEX IF NOT EXISTS ix_sessions_context_id
-ON ewuser.sessions(context_id);
+CREATE INDEX IF NOT EXISTS ix_sessions_context_fk
+ON ewuser.sessions(context_fk);
 
 CREATE INDEX IF NOT EXISTS ix_sessions_last_seen
 ON ewuser.sessions(last_seen_at);
 
 CREATE INDEX IF NOT EXISTS ix_sessions_active
-ON ewuser.sessions(user_id)
+ON ewuser.sessions(user_fk)
 WHERE revoked_at IS NULL;
 
 -- -----------------------------------------------------------------------------
@@ -300,17 +300,17 @@ WHERE revoked_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS ewuser.refresh_tokens (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id    uuid NOT NULL REFERENCES ewuser.sessions(id) ON DELETE CASCADE,
+  session_fk    uuid NOT NULL REFERENCES ewuser.sessions(id) ON DELETE CASCADE,
   token_hash    bytea NOT NULL, -- e.g. SHA-256 of opaque refresh token
   created_at    timestamptz NOT NULL DEFAULT now(),
   expires_at    timestamptz NOT NULL,
   revoked_at    timestamptz,
   rotated_from  uuid REFERENCES ewuser.refresh_tokens(id) ON DELETE SET NULL,
-  UNIQUE(session_id, token_hash)
+  UNIQUE(session_fk, token_hash)
 );
 
 CREATE INDEX IF NOT EXISTS ix_refresh_tokens_session
-ON ewuser.refresh_tokens(session_id);
+ON ewuser.refresh_tokens(session_fk);
 
 CREATE INDEX IF NOT EXISTS ix_refresh_tokens_expires
 ON ewuser.refresh_tokens(expires_at);
@@ -337,80 +337,80 @@ CREATE TABLE IF NOT EXISTS ewuser.roles (
 );
 
 CREATE TABLE IF NOT EXISTS ewuser.role_permissions (
-  role_id       uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE CASCADE,
-  permission_id uuid NOT NULL REFERENCES ewuser.permissions(id) ON DELETE CASCADE,
-  PRIMARY KEY (role_id, permission_id)
+  role_fk       uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE CASCADE,
+  permission_fk uuid NOT NULL REFERENCES ewuser.permissions(id) ON DELETE CASCADE,
+  PRIMARY KEY (role_fk, permission_fk)
 );
 
 CREATE INDEX IF NOT EXISTS ix_role_permissions_permission
-ON ewuser.role_permissions(permission_id);
+ON ewuser.role_permissions(permission_fk);
 
 -- Platform role assignments (e.g. super_admin)
 CREATE TABLE IF NOT EXISTS ewuser.user_roles (
-  user_id    uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
-  role_id    uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE RESTRICT,
+  user_fk    uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  role_fk    uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE RESTRICT,
   granted_at timestamptz NOT NULL DEFAULT now(),
   granted_by uuid REFERENCES ewuser.users(id) ON DELETE SET NULL,
-  PRIMARY KEY (user_id, role_id)
+  PRIMARY KEY (user_fk, role_fk)
 );
 
 -- Wapp membership: binds a user to a role within a given wapp
 CREATE TABLE IF NOT EXISTS ewuser.wapp_memberships (
-  wapp_id     uuid NOT NULL,
-  user_id     uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
-  role_id     uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE RESTRICT,
+  wapp_fk     uuid NOT NULL,
+  user_fk     uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  role_fk     uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE RESTRICT,
   status      text NOT NULL DEFAULT 'active',
   created_at  timestamptz NOT NULL DEFAULT now(),
   created_by  uuid REFERENCES ewuser.users(id) ON DELETE SET NULL,
-  PRIMARY KEY (wapp_id, user_id)
+  PRIMARY KEY (wapp_fk, user_fk)
 );
 
 CREATE INDEX IF NOT EXISTS ix_wapp_memberships_user
-ON ewuser.wapp_memberships(user_id);
+ON ewuser.wapp_memberships(user_fk);
 
 CREATE INDEX IF NOT EXISTS ix_wapp_memberships_role
-ON ewuser.wapp_memberships(role_id);
+ON ewuser.wapp_memberships(role_fk);
 
 -- Optional grouping (teams) within a wapp; useful for governance / bulk role grants
 CREATE TABLE IF NOT EXISTS ewuser.groups (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  wapp_id     uuid,
+  wapp_fk     uuid,
   name        text NOT NULL,
   description text,
   created_at  timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(wapp_id, name)
+  UNIQUE(wapp_fk, name)
 );
 
 CREATE TABLE IF NOT EXISTS ewuser.group_members (
-  group_id   uuid NOT NULL REFERENCES ewuser.groups(id) ON DELETE CASCADE,
-  user_id    uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
+  group_fk   uuid NOT NULL REFERENCES ewuser.groups(id) ON DELETE CASCADE,
+  user_fk    uuid NOT NULL REFERENCES ewuser.users(id) ON DELETE CASCADE,
   added_at   timestamptz NOT NULL DEFAULT now(),
   added_by   uuid REFERENCES ewuser.users(id) ON DELETE SET NULL,
-  PRIMARY KEY (group_id, user_id)
+  PRIMARY KEY (group_fk, user_fk)
 );
 
 -- Groups can be bound to roles (platform or wapp scope).
 CREATE TABLE IF NOT EXISTS ewuser.group_roles (
-  group_id  uuid NOT NULL REFERENCES ewuser.groups(id) ON DELETE CASCADE,
-  role_id   uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE RESTRICT,
-  PRIMARY KEY (group_id, role_id)
+  group_fk  uuid NOT NULL REFERENCES ewuser.groups(id) ON DELETE CASCADE,
+  role_fk   uuid NOT NULL REFERENCES ewuser.roles(id) ON DELETE RESTRICT,
+  PRIMARY KEY (group_fk, role_fk)
 );
 
 -- Optional fine-grained resource grants (leave empty until needed)
 CREATE TABLE IF NOT EXISTS ewuser.resource_grants (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  wapp_id        uuid,
+  wapp_fk        uuid,
   resource_type  text NOT NULL,
-  resource_id    uuid NOT NULL,
+  resource_fk    uuid NOT NULL,
   subject_kind   text NOT NULL CHECK (subject_kind IN ('user', 'group')),
-  subject_id     uuid NOT NULL,
-  permission_id  uuid NOT NULL REFERENCES ewuser.permissions(id) ON DELETE CASCADE,
+  subject_fk     uuid NOT NULL,
+  permission_fk  uuid NOT NULL REFERENCES ewuser.permissions(id) ON DELETE CASCADE,
   created_at     timestamptz NOT NULL DEFAULT now(),
   created_by     uuid REFERENCES ewuser.users(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS ix_resource_grants_lookup
-ON ewuser.resource_grants(wapp_id, resource_type, resource_id);
+ON ewuser.resource_grants(wapp_fk, resource_type, resource_fk);
 
 -- -----------------------------------------------------------------------------
 -- Auditing / telemetry
@@ -418,9 +418,9 @@ ON ewuser.resource_grants(wapp_id, resource_type, resource_id);
 
 CREATE TABLE IF NOT EXISTS ewuser.auth_events (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid REFERENCES ewuser.users(id) ON DELETE SET NULL,
-  session_id  uuid REFERENCES ewuser.sessions(id) ON DELETE SET NULL,
-  wapp_id     uuid,
+  user_fk     uuid REFERENCES ewuser.users(id) ON DELETE SET NULL,
+  session_fk  uuid REFERENCES ewuser.sessions(id) ON DELETE SET NULL,
+  wapp_fk     uuid,
   kind        ewuser.auth_event_kind NOT NULL,
   at          timestamptz NOT NULL DEFAULT now(),
   ip_addr     inet,
@@ -429,7 +429,7 @@ CREATE TABLE IF NOT EXISTS ewuser.auth_events (
 );
 
 CREATE INDEX IF NOT EXISTS ix_auth_events_user_at
-ON ewuser.auth_events(user_id, at DESC);
+ON ewuser.auth_events(user_fk, at DESC);
 
 CREATE INDEX IF NOT EXISTS ix_auth_events_kind_at
 ON ewuser.auth_events(kind, at DESC);
@@ -461,7 +461,7 @@ ON CONFLICT (scope, name) DO NOTHING;
 
 -- Role-permission links (minimal defaults)
 -- super_admin -> all current permissions
-INSERT INTO ewuser.role_permissions (role_id, permission_id)
+INSERT INTO ewuser.role_permissions (role_fk, permission_fk)
 SELECT r.id, p.id
 FROM ewuser.roles r
 JOIN ewuser.permissions p ON TRUE
@@ -469,7 +469,7 @@ WHERE r.scope = 'platform' AND r.name = 'super_admin'
 ON CONFLICT DO NOTHING;
 
 -- support_admin -> platform.admin (and maybe user management later)
-INSERT INTO ewuser.role_permissions (role_id, permission_id)
+INSERT INTO ewuser.role_permissions (role_fk, permission_fk)
 SELECT r.id, p.id
 FROM ewuser.roles r
 JOIN ewuser.permissions p ON p.name IN ('platform.admin')
@@ -477,28 +477,28 @@ WHERE r.scope = 'platform' AND r.name = 'support_admin'
 ON CONFLICT DO NOTHING;
 
 -- wapp roles
-INSERT INTO ewuser.role_permissions (role_id, permission_id)
+INSERT INTO ewuser.role_permissions (role_fk, permission_fk)
 SELECT r.id, p.id
 FROM ewuser.roles r
 JOIN ewuser.permissions p ON p.name IN ('wapp.admin.users', 'wapp.page.read', 'wapp.page.edit', 'wapp.deploy')
 WHERE r.scope = 'wapp' AND r.name = 'owner'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO ewuser.role_permissions (role_id, permission_id)
+INSERT INTO ewuser.role_permissions (role_fk, permission_fk)
 SELECT r.id, p.id
 FROM ewuser.roles r
 JOIN ewuser.permissions p ON p.name IN ('wapp.admin.users', 'wapp.page.read', 'wapp.page.edit')
 WHERE r.scope = 'wapp' AND r.name = 'admin'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO ewuser.role_permissions (role_id, permission_id)
+INSERT INTO ewuser.role_permissions (role_fk, permission_fk)
 SELECT r.id, p.id
 FROM ewuser.roles r
 JOIN ewuser.permissions p ON p.name IN ('wapp.page.read', 'wapp.page.edit')
 WHERE r.scope = 'wapp' AND r.name = 'editor'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO ewuser.role_permissions (role_id, permission_id)
+INSERT INTO ewuser.role_permissions (role_fk, permission_fk)
 SELECT r.id, p.id
 FROM ewuser.roles r
 JOIN ewuser.permissions p ON p.name IN ('wapp.page.read')
