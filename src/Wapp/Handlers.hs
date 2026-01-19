@@ -42,6 +42,9 @@ import Data.Aeson (eitherDecode)
 import Servant.Server.Generic (AsServerT, genericServerT)
 import Servant.API.Generic (ToServant)
 import Servant.Multipart (MultipartData (..), Tmp, FileData (..), Mem)
+import Servant.API (NoContent (..), JSON, Put, Patch, Post, ReqBody, DeleteNoContent)
+import Servant.API.QueryParam (QueryParam)
+import Servant.API.Modifiers (Optional, Lenient, Required, Strict)
 
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
@@ -60,7 +63,9 @@ import qualified DB.Connect as Db
 
 import Wapp.Internal.WordPress.Wrapper (handlePhpRequest)
 import Wapp.HtmxSupport
-import Wapp.RouteDef (WappRoutes (..))
+import Wapp.RouteDef (WappRoutes (..), WappAuthRoutes (..), WappUserRoutes (..), WappAuthzRoutes (..), WappAdminRoutes (..)
+  , WappAdminUsersRoutes (..), WappAdminWappsRoutes (..), WappAdminWappMembersRoutes (..)
+  )
 
 import qualified Demo.DemoPage as Dmo
 import qualified Wapp.Registry as Wr
@@ -76,6 +81,7 @@ import Wapp.Types (
 import Wapp.AppDef (RoutingTable, RouteArg (..), ResolvedApp (..)
           , PairReference (..), FunctionReply (..), RequestParams (..))
 import Wapp.State (User (..), UserProfile (..), fakeSession, WappState (..), Session (..), LiveWapp (..))
+import Wapp.ApiTypes
 
 
 wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
@@ -86,7 +92,12 @@ wappHandlers =
     , wsStream = wsStreamInit
     , upload = uploadHdl
     , rootZN = welcomeHdZN
+    , auth = wappAuthHandlers
+    , user = wappUserHandlers
+    , authz = wappAuthzHandlers
+    , admin = wappAdminHandlers
   }
+
 
 welcomeHdZN :: EasyVerseApp Html
 welcomeHdZN = do
@@ -95,6 +106,7 @@ welcomeHdZN = do
     targetFile = rtOpts.zb.zbRootPath <> "/mainFrame_1.html"
   content <- liftIO $ Bs.readFile targetFile
   pure . Html . Lbs.toStrict $ content
+
 
 phpTestHdl :: Maybe (Either Text Int) -> EasyVerseApp Html
 phpTestHdl mbPostID = do
@@ -417,3 +429,287 @@ xStaticHdl segments = do
   liftIO . putStrLn $ "@[xStaticHandler] pageUrl: " <> targetFile
   pageContent <- liftIO $ Lbs.readFile targetFile
   pure . Html . Lbs.toStrict $ pageContent
+
+
+{-
+wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
+wappHandlers =
+  genericServerT $ WappRoutes {
+    phpTest = phpTestHdl
+    , xStatic = xStaticHdl
+    , wsStream = wsStreamInit
+    , upload = uploadHdl
+    , rootZN = welcomeHdZN
+    , auth = wappAuthHandlers
+    , user = wappUserHandlers
+    , authz = wappAuthzHandlers
+    , admin = wappAdminHandlers
+  }
+-}
+
+
+-- ==========================================================================
+-- Auth / User / Authz / Admin route handlers (skeletons)
+-- ==========================================================================
+
+wappAuthHandlers :: ToServant WappAuthRoutes (AsServerT EasyVerseApp)
+wappAuthHandlers =
+  genericServerT $
+    WappAuthRoutes
+      { loginPg = loginPgHdl
+      , login = loginHdl
+      , logout = logoutHdl
+      , renew = renewHdl
+      , oauthStart = oauthStartHdl
+      , oauthCallback = oauthCallbackHdl
+      }
+
+wappUserHandlers :: ToServant WappUserRoutes (AsServerT EasyVerseApp)
+wappUserHandlers =
+  genericServerT $
+    WappUserRoutes
+      { accountPg = accountPgHdl
+      , securityPg = securityPgHdl
+      , me = meHdl
+      , updateMe = updateMeHdl
+      , sessions = sessionsHdl
+      , revokeSession = revokeSessionHdl
+      }
+
+wappAuthzHandlers :: ToServant WappAuthzRoutes (AsServerT EasyVerseApp)
+wappAuthzHandlers =
+  genericServerT $
+    WappAuthzRoutes
+      { myPerms = myPermsHdl
+      }
+
+wappAdminHandlers :: ToServant WappAdminRoutes (AsServerT EasyVerseApp)
+wappAdminHandlers =
+  genericServerT $
+    WappAdminRoutes
+      { users = wappAdminUsersHandlers
+      , wapps = wappAdminWappsHandlers
+      }
+
+wappAdminUsersHandlers :: ToServant WappAdminUsersRoutes (AsServerT EasyVerseApp)
+wappAdminUsersHandlers =
+  genericServerT $
+    WappAdminUsersRoutes
+      { listUsers = listUsersHdl
+      , createUser = createUserHdl
+      , getUser = getUserHdl
+      , setUserStatus = setUserStatusHdl
+      }
+
+wappAdminWappsHandlers :: ToServant WappAdminWappsRoutes (AsServerT EasyVerseApp)
+wappAdminWappsHandlers =
+  genericServerT $
+    WappAdminWappsRoutes
+      { members = wappAdminWappMembersHandlers
+      }
+
+wappAdminWappMembersHandlers :: Uu.UUID -> ToServant WappAdminWappMembersRoutes (AsServerT EasyVerseApp)
+wappAdminWappMembersHandlers _wappId =
+  genericServerT $
+    WappAdminWappMembersRoutes
+      { listMembers = listMembersHdl
+      , addMember = addMemberHdl
+      , setMemberRole = setMemberRoleHdl
+      , removeMember = removeMemberHdl
+      }
+
+
+-- --------------------------------------------------------------------------
+-- Auth handlers
+-- --------------------------------------------------------------------------
+
+loginPgHdl :: EasyVerseApp Html
+loginPgHdl =
+  simpleHtml
+    "<html><body><h2>EasyWordy Login</h2><p>Use /wbap/auth/login (JSON) to obtain a sid, then connect to /wbap/stream?sid=...</p></body></html>"
+
+loginHdl :: LoginReq -> EasyVerseApp LoginReply
+loginHdl req = do
+  -- NOTE (v1): until auth/session tables are wired, we keep this permissive.
+  -- If wappId is provided we echo it as sid so the current ws flow can work.
+  sidTxt <- case req.wappId of
+    Just wid -> pure (Uu.toText wid)
+    Nothing -> do
+      s <- liftIO Uu.nextRandom
+      pure (Uu.toText s)
+  cid <- liftIO Uu.nextRandom
+  uid <- liftIO Uu.nextRandom
+  pure $
+    LoginReply
+      { sid = sidTxt
+      , cid = cid
+      , userId = uid
+      , displayName = Just "User"
+      }
+
+logoutHdl :: LogoutReq -> EasyVerseApp NoContent
+logoutHdl _req = do
+  -- TODO: revoke session in DB
+  pure NoContent
+
+renewHdl :: RenewReq -> EasyVerseApp RenewReply
+renewHdl req = do
+  -- TODO: rotate session token, re-attach to context
+  -- For now: mint a new sid (UUID text) and keep cid as provided.
+  newSid <- liftIO Uu.nextRandom
+  pure $
+    RenewReply
+      { sid = Uu.toText newSid
+      , cid = req.cid
+      }
+
+oauthStartHdl :: Text -> Maybe Text -> EasyVerseApp Html
+oauthStartHdl provider mbNext = do
+  let nextTxt = Mb.fromMaybe "/wbap" mbNext
+  simpleHtml $
+    "<html><body><h2>OAuth start</h2><p>provider: "
+      <> Bs.unpack (Bs.fromStrict (encodeUtf8 provider))
+      <> "</p><p>next: "
+      <> Bs.unpack (Bs.fromStrict (encodeUtf8 nextTxt))
+      <> "</p><p>TODO: redirect to provider with PKCE.</p></body></html>"
+
+oauthCallbackHdl :: Text -> Maybe Text -> Maybe Text -> Maybe Text -> EasyVerseApp Html
+oauthCallbackHdl provider mbCode mbState mbErr = do
+  simpleHtml $
+    "<html><body><h2>OAuth callback</h2><p>provider: "
+      <> Bs.unpack (Bs.fromStrict (encodeUtf8 provider))
+      <> "</p><p>code: "
+      <> show mbCode
+      <> "</p><p>state: "
+      <> show mbState
+      <> "</p><p>error: "
+      <> show mbErr
+      <> "</p><p>TODO: exchange code, validate id_token, create/link user, create sid.</p></body></html>"
+
+
+-- --------------------------------------------------------------------------
+-- User handlers
+-- --------------------------------------------------------------------------
+
+simpleHtml :: String -> EasyVerseApp Html
+simpleHtml s = pure . Html . Lbs.toStrict $ Bs.pack s
+
+
+accountPgHdl :: EasyVerseApp Html
+accountPgHdl =
+  simpleHtml
+    "<html><body><h2>Account</h2><p>TODO: render account page (SSR) using principal from sid/cookie.</p></body></html>"
+
+securityPgHdl :: EasyVerseApp Html
+securityPgHdl =
+  simpleHtml
+    "<html><body><h2>Security</h2><p>TODO: sessions, password change, MFA/passkeys.</p></body></html>"
+
+meHdl :: Maybe Text -> EasyVerseApp UserSelf
+meHdl _mbSid = do
+  uid <- liftIO Uu.nextRandom
+  pure $
+    UserSelf
+      { userId = uid
+      , primaryEmail = Nothing
+      , displayName = Just "User"
+      , avatarUrl = Nothing
+      }
+
+updateMeHdl :: Maybe Text -> UpdateUserSelfReq -> EasyVerseApp UserSelf
+updateMeHdl _mbSid req = do
+  uid <- liftIO Uu.nextRandom
+  pure $
+    UserSelf
+      { userId = uid
+      , primaryEmail = Nothing
+      , displayName = req.displayName
+      , avatarUrl = req.avatarUrl
+      }
+
+sessionsHdl :: Maybe Text -> EasyVerseApp [SessionInfo]
+sessionsHdl _mbSid = do
+  -- TODO: list sessions for current user
+  pure []
+
+revokeSessionHdl :: Text -> Maybe Text -> EasyVerseApp NoContent
+revokeSessionHdl _sidToRevoke _mbSid = do
+  -- TODO: revoke a given sid for current user
+  pure NoContent
+
+
+-- --------------------------------------------------------------------------
+-- Authz handlers
+-- --------------------------------------------------------------------------
+
+myPermsHdl :: Maybe Text -> Maybe Uu.UUID -> EasyVerseApp PermissionSet
+myPermsHdl _mbSid mbWappId = do
+  pure $
+    PermissionSet
+      { wappId = mbWappId
+      , roles = []
+      , permissions = []
+      }
+
+
+-- --------------------------------------------------------------------------
+-- Admin handlers
+-- --------------------------------------------------------------------------
+
+listUsersHdl :: EasyVerseApp [AdminUserSummary]
+listUsersHdl = pure []
+
+createUserHdl :: AdminCreateUserReq -> EasyVerseApp AdminUserSummary
+createUserHdl req = do
+  uid <- liftIO Uu.nextRandom
+  pure $
+    AdminUserSummary
+      { userId = uid
+      , primaryEmail = Just req.email
+      , displayName = req.displayName
+      , status = "active"
+      }
+
+getUserHdl :: Uu.UUID -> EasyVerseApp AdminUserSummary
+getUserHdl uid =
+  pure $
+    AdminUserSummary
+      { userId = uid
+      , primaryEmail = Nothing
+      , displayName = Nothing
+      , status = "active"
+      }
+
+setUserStatusHdl :: Uu.UUID -> AdminSetUserStatusReq -> EasyVerseApp AdminUserSummary
+setUserStatusHdl uid req =
+  pure $
+    AdminUserSummary
+      { userId = uid
+      , primaryEmail = Nothing
+      , displayName = Nothing
+      , status = req.status
+      }
+
+listMembersHdl :: EasyVerseApp [WappMemberSummary]
+listMembersHdl = pure []
+
+addMemberHdl :: AddWappMemberReq -> EasyVerseApp WappMemberSummary
+addMemberHdl req = do
+  pure $
+    WappMemberSummary
+      { userId = req.userId
+      , role = req.role
+      , addedAt = "now"
+      }
+
+setMemberRoleHdl :: Uu.UUID -> SetWappMemberRoleReq -> EasyVerseApp WappMemberSummary
+setMemberRoleHdl uid req = do
+  pure $
+    WappMemberSummary
+      { userId = uid
+      , role = req.role
+      , addedAt = "now"
+      }
+
+removeMemberHdl :: Uu.UUID -> EasyVerseApp NoContent
+removeMemberHdl _uid = pure NoContent

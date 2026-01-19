@@ -37,6 +37,7 @@ library
       Commands.Version
       DB.Connect
       DB.Opers
+      DB.Stmts.Users
       Demo.DemoPage
       Demo.Handlers
       Demo.MockData
@@ -45,6 +46,9 @@ library
       HttpSup.JWT
       HttpSup.Types
       MainLogic
+      Native.ABI
+      Native.Loader
+      Native.Registry
       Options
       Options.Cli
       Options.ConfFile
@@ -53,6 +57,7 @@ library
       Routing.TopHandlers
       ServeApi
       Utils.Json
+      Wapp.ApiTypes
       Wapp.AppDef
       Wapp.FileWatcher
       Wapp.Handlers

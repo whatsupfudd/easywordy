@@ -55,28 +55,6 @@ setupWai port host shutdownCallback =
       void $ installHandler Sgnl.sigINT (Catch $ shutdownCallback >> closeSocket) Nothing
 
 
-{-
-listen :: Ropt.RunOptions -> IO ()
-listen rtOpts = do
-  let
-    fakeContT = ContT $ bracket (fakeContFct "dummy.") fakeEndFct
-  runContT fakeContT finalAction
-  where
-  finalAction _ = do
-    let shutdownCallback = putStrLn "@[Servant.run] Terminating..."
-        settings = setupWai rtOpts.serverPort shutdownCallback
-    webHandling <- serveApi rtOpts
-    Wrp.runSettings settings webHandling
-
-fakeContFct :: [a] -> IO Int
-fakeContFct l = return (length l)
-
-fakeEndFct :: Int -> IO ()
-fakeEndFct _ = pure ()
-
--}
-
-
 -- Anonymous Handlers:
 anonHandlers :: ToServant AnonymousRoutes (AsServerT EasyVerseApp)
 anonHandlers =
@@ -112,7 +90,7 @@ anonGetPageHandler :: String -> EasyVerseApp Html
 anonGetPageHandler pageUrl = do
   _ <- liftIO $ putStrLn "@[anonGetPageHandler]"
   let
-    tmpStr = (encodeUtf8 . DT.pack $ pageUrl)
+    tmpStr = encodeUtf8 . DT.pack $ pageUrl
   pageContent <- liftIO $ LBS.readFile ("/tmp/" <>pageUrl)
   pure . Html $ "<html><head><title>TEST</title></head><body>TEST: " <> LBS.toStrict pageContent <> "</body></html>"
 
