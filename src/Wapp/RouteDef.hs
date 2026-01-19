@@ -51,7 +51,7 @@ data WappRoutes mode = WappRoutes {
     phpTest :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int :> Get '[HTML] Html
     , xStatic :: mode :- "xstatic" :> CaptureAll "path" String :> Get '[HTML] Html
     -- TODO: find out how to make the capture optional, giving a Maybe Text.
-    , wsStream :: mode :- "stream" :> QueryParam' '[Required, Strict] "sid" Text :> WebSocket
+    , wsStream :: mode :- "stream" :> Capture "sid" Text :> WebSocket
     , upload :: mode :- "upload" :> MultipartForm Tmp (MultipartData Tmp) :> Post '[PlainText] String
     , rootZN :: mode :- Get '[HTML] Html
 
