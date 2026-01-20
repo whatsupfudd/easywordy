@@ -92,6 +92,7 @@ dependencies:
   - blaze-svg
   - blaze-markup
   - markdown
+  - uri-encode
   # For safe exceptions:
   - safe-exceptions
   # For decoding serialized data:

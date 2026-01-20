@@ -45,6 +45,8 @@ import Servant.Multipart (MultipartData (..), Tmp, FileData (..), Mem)
 import Servant.API (NoContent (..), JSON, Put, Patch, Post, ReqBody, DeleteNoContent)
 import Servant.API.QueryParam (QueryParam)
 import Servant.API.Modifiers (Optional, Lenient, Required, Strict)
+import Servant (throwError, err303, errBody, errHeaders)
+
 
 import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
@@ -57,7 +59,7 @@ import qualified Hasql.Decoders as DbD
 import Hasql.Pool (Pool, acquire, use)
 
 import qualified HttpSup.Types as Ht
-import Api.Types (EasyVerseApp (..), AppEnv (..), Html (..))
+import Api.Types (EasyVerseApp (..), AppEnv (..), Html (..), ApiError (RedirectAE))
 import qualified Options.Runtime as Rt
 import qualified DB.Connect as Db
 
@@ -65,6 +67,7 @@ import Wapp.Internal.WordPress.Wrapper (handlePhpRequest)
 import Wapp.HtmxSupport
 import Wapp.RouteDef (WappRoutes (..), WappAuthRoutes (..), WappUserRoutes (..), WappAuthzRoutes (..), WappAdminRoutes (..)
   , WappAdminUsersRoutes (..), WappAdminWappsRoutes (..), WappAdminWappMembersRoutes (..)
+  , WappUIRoutes (..), WappUIAuthRoutes (..)
   )
 
 import qualified Demo.DemoPage as Dmo
@@ -82,6 +85,7 @@ import Wapp.AppDef (RoutingTable, RouteArg (..), ResolvedApp (..)
           , PairReference (..), FunctionReply (..), RequestParams (..))
 import Wapp.State (User (..), UserProfile (..), fakeSession, WappState (..), Session (..), LiveWapp (..))
 import Wapp.ApiTypes
+import Wapp.UI.Auth as Wau
 
 
 wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
@@ -92,6 +96,7 @@ wappHandlers =
     , wsStream = wsStreamInit
     , upload = uploadHdl
     , rootZN = welcomeHdZN
+    , ui = wappUIHandlers
     , auth = wappAuthHandlers
     , user = wappUserHandlers
     , authz = wappAuthzHandlers
@@ -452,12 +457,25 @@ wappHandlers =
 -- Auth / User / Authz / Admin route handlers (skeletons)
 -- ==========================================================================
 
-wappAuthHandlers :: ToServant WappAuthRoutes (AsServerT EasyVerseApp)
-wappAuthHandlers =
+wappUIHandlers :: ToServant WappUIRoutes (AsServerT EasyVerseApp)
+wappUIHandlers =
   genericServerT $
-    WappAuthRoutes
-      { loginPg = loginPgHdl
-      , login = loginHdl
+    WappUIRoutes
+      { auth = wappUIAuthHandlers
+      }
+
+wappUIAuthHandlers :: ToServant WappUIAuthRoutes (AsServerT EasyVerseApp)
+wappUIAuthHandlers =
+  genericServerT $
+    WappUIAuthRoutes
+      { signinPg = signinPgHdl
+      , signupPg = signupPgHdl
+      }
+
+wappAuthHandlers :: ToServant WappAuthRoutes (AsServerT EasyVerseApp)
+wappAuthHandlers = genericServerT $ WappAuthRoutes { 
+        signin = signinHdl
+      , signup = signupHdl
       , logout = logoutHdl
       , renew = renewHdl
       , oauthStart = oauthStartHdl
@@ -520,32 +538,73 @@ wappAdminWappMembersHandlers _wappId =
 
 
 -- --------------------------------------------------------------------------
+-- UI handlers
+-- --------------------------------------------------------------------------
+
+type UiAuthHandler = Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> EasyVerseApp Html
+signinPgHdl :: UiAuthHandler
+signinPgHdl = fetchUIWithApp Wau.signinPanel
+
+signupPgHdl :: UiAuthHandler
+signupPgHdl = fetchUIWithApp Wau.signupPanel
+
+
+fetchUIWithApp :: (String -> String -> String -> String) -> 
+        Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text -> EasyVerseApp Html
+fetchUIWithApp uiRender mbLang mbEwh mbApp mbNStep = do
+  case mbApp of
+    Nothing -> do
+      simpleHtml "<html><body><h2>Error</h2><p>App is missing.</p></body></html>"
+    Just appID -> do
+      rtOpts <- Rws.asks config_Ctxt
+      let
+        -- hostHeader = lookup hHost (requestHeaders req)
+        ewHost = maybe ("http://" <> T.unpack rtOpts.serverHost <> ":" <> show rtOpts.serverPort) T.unpack mbEwh
+        nextStep = maybe "/" T.unpack mbNStep
+      simpleHtml $ uiRender (T.unpack appID) ewHost nextStep
+
+
+-- --------------------------------------------------------------------------
 -- Auth handlers
 -- --------------------------------------------------------------------------
 
 loginPgHdl :: EasyVerseApp Html
-loginPgHdl =
-  simpleHtml
-    "<html><body><h2>EasyWordy Login</h2><p>Use /wbap/auth/login (JSON) to obtain a sid, then connect to /wbap/stream?sid=...</p></body></html>"
+loginPgHdl = do
+  simpleHtml "<html><body><h2>Login</h2><p>TODO: handle proper login sid/cookie.</p></body></html>"
 
-loginHdl :: LoginReq -> EasyVerseApp LoginReply
-loginHdl req = do
-  -- NOTE (v1): until auth/session tables are wired, we keep this permissive.
-  -- If wappId is provided we echo it as sid so the current ws flow can work.
-  sidTxt <- case req.wappId of
+signinHdl :: SigninReq -> EasyVerseApp LoginReply
+signinHdl req = do
+  case req.wappID of
+    Just wid -> do
+      cid <- liftIO Uu.nextRandom
+      uid <- liftIO Uu.nextRandom
+      let
+        appLanding = "/app-routing?wappID=" <> Uu.toText wid <> "&cid=" <> Uu.toText cid <> "&uid=" <> Uu.toText uid
+      throwError $ RedirectAE appLanding "moving to app"
+    Nothing -> do
+      -- TODO: send back some error to the signin form.
+      sid <- liftIO Uu.nextRandom
+      cid <- liftIO Uu.nextRandom
+      uid <- liftIO Uu.nextRandom
+      pure $ LoginReply
+        { sid = Uu.toText sid
+        , cid = cid
+        , userId = uid
+        , displayName = Just "User"
+        }
+
+
+signupHdl :: SignupReq -> EasyVerseApp LoginReply
+signupHdl req = do
+  sidTxt <- case req.wappID of
     Just wid -> pure (Uu.toText wid)
     Nothing -> do
       s <- liftIO Uu.nextRandom
       pure (Uu.toText s)
   cid <- liftIO Uu.nextRandom
   uid <- liftIO Uu.nextRandom
-  pure $
-    LoginReply
-      { sid = sidTxt
-      , cid = cid
-      , userId = uid
-      , displayName = Just "User"
-      }
+  throwError $ RedirectAE "/new-page" "moving to app"
+
 
 logoutHdl :: LogoutReq -> EasyVerseApp NoContent
 logoutHdl _req = do

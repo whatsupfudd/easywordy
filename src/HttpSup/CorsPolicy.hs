@@ -5,15 +5,19 @@
 
 module HttpSup.CorsPolicy where
 
-import Data.Aeson (FromJSON, ToJSON)
+import qualified Data.ByteString as Bs
 import Data.CaseInsensitive as CI
 -- import Data.List (elem, lookup)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as DT
 import Data.Text.Encoding (encodeUtf8)
+
 import GHC.Generics (Generic)
-import Network.HTTP.Types.Header (hOrigin)
+
+import Data.Aeson (FromJSON, ToJSON)
+
+import Network.HTTP.Types.Header (HeaderName, hOrigin, hAuthorization, hContentType)
 import Network.Wai
 import Network.Wai.Middleware.Cors
 -- import Prelude
@@ -30,45 +34,74 @@ data CORSConfig = CORSConfig {
 
 
 defaultCorsPolicy = CORSConfig {
-   allowedOrigins = [ "http://localhost", "http://localhost:8885" ]
-  , publicPrefixes = [ "login", "site", "/", "index.php", "wp-login.php", "wp-admin" ]
+   allowedOrigins = [ "http://localhost", "http://localhost:8885", "http://ledna:8205" ]
+  , publicPrefixes = [ "login", "site", "/", "index.php", "wp-login.php", "wp-admin", "wbap/ui" ]
   , maxAge = Nothing
   }
 
 
 setCorsPolicy :: CORSConfig -> Middleware
-setCorsPolicy CORSConfig{..} = cors $ \request ->
-  if isSwaggerRequest request || isPublicApi request
+setCorsPolicy corsConfig = cors $ \request ->
+  if isPublicApi request
   then Just $ simpleCorsResourcePolicy { 
     corsMethods = simpleMethods <> [ "OPTIONS" ]
-    , corsRequestHeaders = simpleHeaders <> ["Authorization", "Content-Type"]
+    , corsRequestHeaders = simpleHeaders <> [ hAuthorization, hContentType ] <> hxRequestHeaders
+    , corsExposedHeaders = Just hxResponseHeaders
     }
   else Just $ CorsResourcePolicy { 
     corsOrigins = matchHostOrigin request
     , corsMethods = simpleMethods <> [ "DELETE", "OPTIONS" ]
-    , corsRequestHeaders = ["Authorization", "Content-Type"]
-    , corsExposedHeaders = Nothing
-    , corsMaxAge = maxAge
+    , corsRequestHeaders = simpleHeaders <> [ hAuthorization, hContentType ] <> hxRequestHeaders
+    , corsExposedHeaders = Just hxResponseHeaders
+    , corsMaxAge = corsConfig.maxAge
     , corsVaryOrigin = True
     , corsRequireOrigin = True
-    , corsIgnoreFailures = False
+    , corsIgnoreFailures = True
     }
     where
-      matchHostOrigin req = Just . fromMaybe ([], False) $ do
+      matchHostOrigin :: Request -> Maybe ([Origin], Bool)
+      matchHostOrigin request = Just . fromMaybe ([], False) $ do
         -- Maybe monad: CORS will be denied when there's any Nothing.
-        _vhost <- requestHeaderHost req
-        origin <- lookup hOrigin (requestHeaders req)
-
+        -- _vhost <- requestHeaderHost request
+        origin <- lookup hOrigin (requestHeaders request)
         if CI.mk origin `elem` ciAllowedOrigins
-        then return ([origin], {-allow credentials?-} True)
+        then return ([origin], True)
         else Nothing
 
-      isSwaggerRequest req = case pathInfo req of
-        []    -> False
-        (x:_) -> "swagger" `DT.isPrefixOf` x
+      isPublicApi :: Request -> Bool
+      isPublicApi req =
+        let
+          p = DT.intercalate "/" (pathInfo req)
+        in
+        any (`DT.isPrefixOf` p) corsConfig.publicPrefixes
 
-      isPublicApi req = case pathInfo req of
-        []    -> False
-        (x:_) -> any (`DT.isPrefixOf` x) publicPrefixes
+      ciAllowedOrigins = CI.mk . encodeUtf8 <$> corsConfig.allowedOrigins
 
-      ciAllowedOrigins = mk . encodeUtf8 <$> allowedOrigins
+      hxRequestHeaders :: [HeaderName]
+      hxRequestHeaders = CI.mk
+        <$> [
+          "HX-Request"
+        , "HX-Trigger"
+        , "HX-Trigger-Name"
+        , "HX-Target"
+        , "HX-Current-URL"
+        , "HX-Prompt"
+        , "HX-Boosted"
+        , "HX-History-Restore-Request"
+        , "X-Requested-With"
+        ]
+
+      hxResponseHeaders :: [HeaderName]
+      hxResponseHeaders = CI.mk
+        <$> [
+          "HX-Location"
+        , "HX-Push-Url"
+        , "HX-Redirect"
+        , "HX-Refresh"
+        , "HX-Replace-Url"
+        , "HX-Reswap"
+        , "HX-Retarget"
+        , "HX-Trigger"
+        , "HX-Trigger-After-Settle"
+        , "HX-Trigger-After-Swap"
+        ]

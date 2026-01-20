@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Api.Types where
 
@@ -34,7 +35,8 @@ import Servant.Auth.Server (Auth, AuthResult
 import Servant.Server
 import Servant.Server.Generic (AsServerT, genericServerT)
 import Servant.API.Generic ((:-), ToServantApi, ToServant)
-import Servant.API ((:>), ReqBody, JSON, Capture, Post, Get)
+import Servant.API ((:>), ReqBody, JSON, Capture, Post, Get, Accept (..), MimeRender (..))
+import Network.HTTP.Media ((//), (/:))
 
 import Hasql.Pool (Pool)
 import Database.MySQL.Base (MySQLConn)
@@ -88,7 +90,15 @@ type instance BasicAuthCfg = BasicAuthData -> IO (AuthResult ClientInfo)
 
 
 data HTML = HTML
+instance Accept HTML where
+   contentType _ = "text" // "html" /: ("charset", "utf-8")
+ 
+
 newtype Html = Html { html :: ByteString }
+
+instance MimeRender HTML Html where
+  mimeRender _ = LBS.fromStrict . html
+
 
 -- Context to all API handlers (ReaderT)
 
@@ -110,6 +120,7 @@ data ApiError =
   | InternalErrorAE Text
   | UnauthorizedAE
   | UnknownSituationAE Text
+  | RedirectAE Text Text
   deriving stock (Generic, Show, Eq)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -121,6 +132,7 @@ asServantError error =
     InternalErrorAE msg -> err500 { errBody = LBS.fromStrict . encodeUtf8 $ msg }
     UnauthorizedAE -> err401 { errBody = "Unauthorized access." }
     UnknownSituationAE msg -> err500 { errBody = LBS.fromStrict . encodeUtf8 $ msg }
+    RedirectAE location msg -> err303 { errBody = LBS.fromStrict . encodeUtf8 $ msg, errHeaders = [("Location", encodeUtf8 location)] }
 
 
 -- Main Application / handler for the API:

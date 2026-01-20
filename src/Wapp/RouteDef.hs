@@ -11,11 +11,13 @@ import Data.Map as Mp
 import Data.UUID (UUID)
 import GHC.Generics
 
+import Data.Aeson (FromJSON)
+
 import qualified Network.WebSockets as WS
 
 import Servant.API (
         (:>), Capture, CaptureAll, Get, Put, Patch
-        , Post, ReqBody, PlainText, JSON, PostNoContent, DeleteNoContent
+        , Post, ReqBody, PlainText, JSON, PostNoContent, DeleteNoContent, FormUrlEncoded
     )
 import Servant.API.QueryParam (QueryParam, QueryParam')
 import Servant.API.Modifiers (Optional, Lenient, Required, Strict)
@@ -23,8 +25,6 @@ import Servant.API.Generic ((:-), ToServantApi, ToServant)
 import Servant.API.WebSocket (WebSocket)
 import Servant.Server.Generic (AsServerT, genericServerT)
 import Servant.Multipart (MultipartForm, Tmp, MultipartData, Mem)
-
-import Data.Aeson (FromJSON)
 
 import Api.Types (HTML, Html, EasyVerseApp)
 import Wapp.ApiTypes
@@ -55,6 +55,7 @@ data WappRoutes mode = WappRoutes {
     , upload :: mode :- "upload" :> MultipartForm Tmp (MultipartData Tmp) :> Post '[PlainText] String
     , rootZN :: mode :- Get '[HTML] Html
 
+    , ui :: mode :- "ui" :> ToServantApi WappUIRoutes
     , auth :: mode :- "auth" :> ToServantApi WappAuthRoutes
     , user :: mode :- "user" :> ToServantApi WappUserRoutes
     , authz :: mode :- "authz" :> ToServantApi WappAuthzRoutes
@@ -63,11 +64,9 @@ data WappRoutes mode = WappRoutes {
   deriving stock (Generic)
 
 data WappAuthRoutes mode = WappAuthRoutes {
-    -- SSR login page
-    loginPg :: mode :- "login" :> Get '[HTML] Html
-
     -- REST login (creates a new EW session and attaches/creates a context)
-    , login :: mode :- "login" :> ReqBody '[JSON] LoginReq :> Post '[JSON] LoginReply
+    signin :: mode :- "signin" :> ReqBody '[FormUrlEncoded] SigninReq :> Post '[HTML] LoginReply
+    , signup :: mode :- "signup" :> ReqBody '[FormUrlEncoded] SignupReq :> Post '[HTML] LoginReply
 
     -- Logout (revoke session)
     , logout :: mode :- "logout" :> ReqBody '[JSON] LogoutReq :> PostNoContent
@@ -82,6 +81,22 @@ data WappAuthRoutes mode = WappAuthRoutes {
                     :> QueryParam "state" Text
                     :> QueryParam "error" Text
                     :> Get '[HTML] Html
+  }
+  deriving stock (Generic)
+
+
+data WappUIRoutes mode = WappUIRoutes {
+    auth :: mode :- "auth" :> ToServantApi WappUIAuthRoutes
+  }
+  deriving stock (Generic)
+
+
+type UiAuthPostfix = QueryParam "lang" Text :> QueryParam "ewh" Text
+          :> QueryParam "app" Text :> QueryParam "nextStep" Text :> Get '[HTML] Html
+
+data WappUIAuthRoutes mode = WappUIAuthRoutes {
+    signinPg :: mode :- "signin" :> UiAuthPostfix
+    , signupPg :: mode :- "signup" :> UiAuthPostfix
   }
   deriving stock (Generic)
 

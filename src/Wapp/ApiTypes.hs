@@ -3,34 +3,35 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Wapp.ApiTypes where
 
 import Data.Text (Text)
 import Data.UUID (UUID)
+
 import GHC.Generics
-
-import Servant.API
-  ( (:>)
-  , Capture
-  , CaptureAll
-  )
-
 import Data.Aeson (FromJSON, ToJSON)
 
+import Web.FormUrlEncoded (FromForm)
+import Servant.API ( (:>), Capture, CaptureAll, MimeRender (..))
+
+import Api.Types (HTML)
 
 -- ============================================================================
 -- Payload types (v1)
 -- ============================================================================
 
-data LoginReq = LoginReq
-  { ident :: Text
+data SigninReq = SigninReq
+  { email :: Text
   , password :: Text
-  , wappId :: Maybe UUID
+  , wappID :: Maybe UUID
   , resumeContext :: Maybe UUID
   }
   deriving stock (Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+instance FromForm SigninReq
 
 data LoginReply = LoginReply
   { sid :: Text
@@ -39,7 +40,23 @@ data LoginReply = LoginReply
   , displayName :: Maybe Text
   }
   deriving stock (Show, Generic)
+
+
+instance MimeRender HTML LoginReply where
+  mimeRender _ _ = "<div>LoginReply: the login process failed.</div>"
+
+
+data SignupReq = SignupReq
+  { email :: Text
+  , password :: Text
+  , wappID :: Maybe UUID
+  , resumeContext :: Maybe UUID
+  }
+  deriving stock (Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+instance FromForm SignupReq
+
 
 newtype LogoutReq = LogoutReq
   { sid :: Text

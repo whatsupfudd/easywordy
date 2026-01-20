@@ -182,7 +182,7 @@ mergeOptions cli file env = do
     case co.oEnabled of
       Just False ->
         modify $ \s -> s { Rt.corsPolicy = Nothing }
-      _ ->
+      _ -> do
         mconf co.allowed $ \nVal s -> s { Rt.corsPolicy = Just $ Hcrs.defaultCorsPolicy { Hcrs.allowedOrigins = map T.pack nVal } }
     pure $ Right ()
 

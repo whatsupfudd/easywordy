@@ -75,6 +75,7 @@ library
       Wapp.RouteDef
       Wapp.State
       Wapp.Types
+      Wapp.UI.Auth
       Wapp.WsRouter
   other-modules:
       Paths_easywordy
@@ -154,6 +155,7 @@ library
     , unix
     , unliftio
     , unordered-containers
+    , uri-encode
     , uuid
     , vector
     , wai
@@ -246,6 +248,7 @@ executable easywordy
     , unix
     , unliftio
     , unordered-containers
+    , uri-encode
     , uuid
     , vector
     , wai
@@ -339,6 +342,7 @@ test-suite easywordy-test
     , unix
     , unliftio
     , unordered-containers
+    , uri-encode
     , uuid
     , vector
     , wai

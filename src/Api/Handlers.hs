@@ -101,13 +101,6 @@ homePageHandler = do
   pure . Html $ "<html><head><title>EASY VERSE/title></head><body>Welcome to EasyVerse, the site starts at <a href='/site/landing.html'>Landing</a><br/><br/>For more information, consult <a href='https://whatsupfudd.com'>FUDD</a></body></html>"
 
 
-instance Accept HTML where
-  contentType _ = "text" // "html" /: ("charset", "utf-8")
-
-instance MimeRender HTML Html where
-  mimeRender _ = LBS.fromStrict . html
-
-
 -- Protected routes:
 authHandlers :: AuthResult ClientInfo -> ToServant AuthenticatedRoutes (AsServerT EasyVerseApp)
 authHandlers authResult = genericServerT $ AuthenticatedRoutes {

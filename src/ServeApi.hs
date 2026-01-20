@@ -26,7 +26,7 @@ import Servant.Multipart (defaultMultipartOptions, MultipartOptions (..), Tmp, M
 
 import Network.Wai (Application)
 import Network.Wai.Parse (setMaxRequestKeyLength, defaultParseRequestBodyOptions, setMaxRequestFileSize, setMaxRequestFilesSize)
-import Network.Wai.Middleware.RequestLogger (logStdout)
+import Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 
 import Database.MySQL.Base (MySQLConn)
 import Hasql.Pool (Pool)
@@ -58,7 +58,8 @@ type MainApi = ToServantApi TopRoutes
 
 
 -- serveApi ::  Rt.RunOptions -> Pool -> IO Application
-launchServant ::  Rt.RunOptions -> Pool -> MySQLConn -> Ptr () -> (RoutingDictionary, Maybe WatcherControl) -> IO Application
+launchServant ::  Rt.RunOptions -> Pool -> MySQLConn -> Ptr ()
+        -> (RoutingDictionary, Maybe WatcherControl) -> IO Application
 launchServant rtOpts pgPool mqlConn sapiModuleDef (appDefs, defWatcher) = do
   putStrLn $ "@[launchServant] starting, confFile: " <> show rtOpts.jwkConfFile <> "."
   -- TODO: figure out how to turn off JWT authentication.
@@ -83,6 +84,7 @@ launchServant rtOpts pgPool mqlConn sapiModuleDef (appDefs, defWatcher) = do
     apiContext = cookieCfg :. jwtSettings :. sessionAuth :. multipartOpts :. EmptyContext
     apiContextP = Proxy :: Proxy '[CookieSettings, JWTSettings, BasicAuthCfg, MultipartOptions Tmp]
 
+    -- Add logStdoutDev to have additional info.
     middlewares = case rtOpts.corsPolicy of
       Nothing -> linkUp $ id :| [ logStdout ]
       Just aPolicy -> linkUp $ id :| [ logStdout, setCorsPolicy aPolicy ]
@@ -99,6 +101,8 @@ launchServant rtOpts pgPool mqlConn sapiModuleDef (appDefs, defWatcher) = do
           }
     -- TODO: add state to the handler if running with RWST.
     server = hoistServerWithContext serverApiProxy apiContextP (apiAsHandler appEnv) serverApiT
+
+  liftIO $ putStrLn $ "@[serveApi] using cors policy: " <> maybe "No cors policy" show rtOpts.corsPolicy
 
   case s3Storage of
     Nothing -> putStrLn "@[serveApi] no s3 storage configured."
