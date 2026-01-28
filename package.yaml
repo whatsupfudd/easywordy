@@ -134,6 +134,7 @@ dependencies:
   - complexor
   - goldfann
   - kdofa
+  - ew-general
 
 
 default-extensions:
@@ -163,13 +164,15 @@ extra-libraries: php
 
 executables:
   easywordy:
-    main:                Main.hs
-    source-dirs:         app
+    main: Main.hs
+    source-dirs: app
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     - -g
+    - -dynamic
+    - -flink-rts
     dependencies:
     - easywordy
 

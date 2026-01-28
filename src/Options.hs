@@ -91,6 +91,7 @@ mergeOptions cli file env = do
   parseOptions :: Cl.CliOptions -> Fo.FileOptions -> FilePath -> RunOptIOSt
   parseOptions cli file appHome = do
     mconf cli.debug $ \nVal s -> s { Rt.debug = nVal }
+    mconf file.nativesRoot $ \nVal s -> s { Rt.nativesRoot = nVal }
     for_ file.server parseServer
     innerConf (\nVal s -> s { Rt.pgDbConf = nVal }) parsePgDb Rt.defaultPgDbConf file.db
     for_ file.jwt parseJWT

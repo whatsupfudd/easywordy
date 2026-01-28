@@ -115,6 +115,7 @@ data FileOptions = FileOptions {
   , aiserv :: Maybe AiservOptions
   , tavus :: Maybe TavusOptions
   , s3store :: Maybe S3Options
+  , nativesRoot :: Maybe FilePath
  }
  deriving stock (Show, Generic)
 

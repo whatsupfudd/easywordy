@@ -14,14 +14,17 @@ module Options.Runtime (
 -- import Data.Int (Int)
 import Data.Text (Text)
 
+import System.FilePath ((</>))
+
 import HttpSup.CorsPolicy (CORSConfig, defaultCorsPolicy)
 import DB.Connect (PgDbConfig (..), defaultPgDbConf, MqlDbConfig (..), defaultMqlDbConf)
 import Assets.Types (S3Config (..), defaultS3Conf)
 
+
 -- TODO: create a proper Wordpress configuration set:
 defaultWpConf :: FilePath -> WpConfig
 defaultWpConf homeDir = WpConfig {
-  rootPath = homeDir <> "/Wordpress"
+  rootPath = homeDir </> "Wordpress"
   , mqlDbConf = defaultMqlDbConf
 }
 
@@ -65,7 +68,7 @@ defaultAiservConf = AiservConfig {
 
 defaultZbConf :: FilePath -> ZbConfig
 defaultZbConf homeDir = ZbConfig {
-  zbRootPath = homeDir <> "/ZhopNess"
+  zbRootPath = homeDir </> "ZhopNess"
   }
 
 
@@ -78,8 +81,8 @@ data WappConfig = WappConfig {
 
 defaultWappConf :: FilePath -> WappConfig
 defaultWappConf homeDir = WappConfig {
-  waDefDir = homeDir <> "/Wapp/Defs"
-  , waContentDir = homeDir <> "/Wapp/content"
+  waDefDir = homeDir </> "Wapp/Defs"
+  , waContentDir = homeDir </> "Wapp/content"
   }
 
 newtype TavusConfig = TavusConfig {
@@ -106,6 +109,7 @@ data RunOptions = RunOptions {
     , aiserv :: Maybe AiservConfig
     , tavus :: TavusConfig
     , s3store :: Maybe S3Config
+    , nativesRoot :: FilePath
   }
   deriving (Show)
 
@@ -126,4 +130,5 @@ defaultRun homeDir homeConfig server port =
     , aiserv = Nothing
     , tavus = defaultTavusConf
     , s3store = Nothing
+    , nativesRoot = homeDir </> ".fudd/easywordy/natives"
   }

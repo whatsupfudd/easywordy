@@ -86,7 +86,8 @@ import Wapp.AppDef (RoutingTable, RouteArg (..), ResolvedApp (..)
 import Wapp.State (User (..), UserProfile (..), fakeSession, WappState (..), Session (..), LiveWapp (..))
 import Wapp.ApiTypes
 import Wapp.UI.Auth as Wau
-
+import qualified Native.Loader as Ld
+import qualified Native.Registry as Nr
 
 wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
 wappHandlers =
@@ -135,7 +136,7 @@ wsStreamInit :: Text -> WS.Connection -> EasyVerseApp ()
 wsStreamInit appID conn = do
   rtOpts <- Gm.asks config_Ctxt
   pgDb <- Gm.asks pgPool_Ctxt
-  eiTargetApp <- getTargetApp (T.unpack appID)
+  eiTargetApp <- getTargetApp rtOpts (T.unpack appID)
 
   case eiTargetApp of
     Left errMsg -> do
@@ -169,8 +170,8 @@ wsStreamInit appID conn = do
             }
         handleClient rtOpts pgDb newContext
   where
-  getTargetApp :: String -> EasyVerseApp (Either String LiveWapp)
-  getTargetApp reqID = do
+  getTargetApp :: Rt.RunOptions -> String -> EasyVerseApp (Either String LiveWapp)
+  getTargetApp rtOpts reqID = do
     wState <- Gm.asks state_Tmp
     case Uu.fromString reqID of
       Nothing -> do
@@ -208,7 +209,12 @@ wsStreamInit appID conn = do
                     }
                 let
                   newState = wState { cache = Mp.insert aUID newApp wState.cache }
-                liftIO $ P.putStrLn $ "@[getTargetApp] adding new liveApp, ID: " <> show aUID
+                liftIO $ P.putStrLn $ "@[getTargetApp] adding new Wapp, ID: " <> show aUID
+                liftIO $ putStrLn "@[wsStreamInit] loading native library for app: 0to1done\n---"
+                liftIO $ Ld.loadWappNative rtOpts.nativesRoot "0to1done"
+                _ <- liftIO $ Nr.lookupNative "0to1done.getIdeas"
+
+                liftIO $ putStrLn "@[wsStreamInit] --- done."
                 pure $ Right newApp
           Just liveApp -> do
             liftIO $ P.putStrLn $ "@[getTargetApp] found liveApp, ID: " <> show aUID

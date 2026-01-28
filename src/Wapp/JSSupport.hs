@@ -32,7 +32,7 @@ import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
 import qualified Wapp.Apps.Aox.Logic as Aox
 import qualified Wapp.Apps.Scenario.Presentation.DbOps as Pt
 import qualified Wapp.AppDef as Wd
-
+import qualified Native.Registry as Nr
 
 import Wapp.Types (JSExecSupport(..))
 
@@ -92,9 +92,12 @@ initJS :: FilePath -> Text -> IO (Session, JSVal)
 initJS libPath moduleName = do
   putStrLn $ "@[initJS] starting, libPath: " <> libPath <> ", moduleName: " <> unpack moduleName
   session <- newSession defaultConfig
+  putStrLn $ "@[initJS] done session: " <> show session
   elmModule <- importMJS session libPath
+  putStrLn $ "@[initJS] done elmModule."
   let
     mNameLBS = LBS.fromStrict . encodeUtf8 $ moduleName
+  putStrLn $ "@[initJS] mNameLBS: " <> show mNameLBS
   rezA <- eval session [js|
     jsModName = "" + $mNameLBS
     // console.warn("@[initJS.eval] elmModule: ", $elmModule)
@@ -106,7 +109,9 @@ initJS libPath moduleName = do
     // console.warn("@[initJS.eval] app: ", app)
     return app
   |]
+  putStrLn $ "@[initJS] done eval session."
   rsA <- evaluate rezA :: IO JSVal
+  putStrLn $ "@[initJS] done evaluate rezA."
   -- putStrLn $ "@[initJS] done; rez: " <> show rsA
   return (session, elmModule)
 
@@ -137,7 +142,27 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
     libExec jsSupport execParams = do
       putStrLn $ "@[libEx/0] execParams: " <> show execParams
       case mbDb of
-        Just dbPool -> do
+        Just dbPool ->
+          if execParams.package == "0to1done" then
+            let
+              fctName = execParams.package <> "." <> execParams.action
+            in do
+            putStrLn $ "@[libEx/0to1done] looking up native function: " <> unpack fctName
+            target <- Nr.lookupNative fctName
+            case target of
+              Just fct -> do
+                eiActs <- fct dbPool (execParams.params, Nothing)
+                case eiActs of
+                  Left err -> do
+                    putStrLn $ "@[libEx/1/0to1done] error fetching acts: " <> err
+                    pure $ Ae.encode $ NativeError { msg = "@[libEx/1/0to1done] err acts: " <> pack err }
+                  Right rez -> do
+                    putStrLn $ "@[libEx/2/0to1done] acts: " <> show rez
+                    pure rez
+              Nothing -> do
+                putStrLn $ "@[libEx/3/0to1done] function not found: " <> unpack fctName
+                pure $ Ae.encode $ NativeError { msg = "@[libEx/3/0to1done] package not found: " <> execParams.package }
+          else do
           case Mp.lookup execParams.package jsSupport.hsLibs of
             Just lib -> do
               case Mp.lookup execParams.action lib of

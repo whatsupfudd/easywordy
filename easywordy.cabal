@@ -46,9 +46,6 @@ library
       HttpSup.JWT
       HttpSup.Types
       MainLogic
-      Native.ABI
-      Native.Loader
-      Native.Registry
       Options
       Options.Cli
       Options.ConfFile
@@ -104,6 +101,7 @@ library
     , connection >=0.3.2
     , containers
     , directory
+    , ew-general
     , exceptions
     , filepath
     , fsnotify
@@ -177,7 +175,7 @@ executable easywordy
       OverloadedStrings
       DuplicateRecordFields
       OverloadedRecordDot
-  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N -g
+  ghc-options: -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N -g -dynamic -flink-rts
   extra-libraries:
       php
   build-depends:
@@ -197,6 +195,7 @@ executable easywordy
     , containers
     , directory
     , easywordy
+    , ew-general
     , exceptions
     , filepath
     , fsnotify
@@ -291,6 +290,7 @@ test-suite easywordy-test
     , containers
     , directory
     , easywordy
+    , ew-general
     , exceptions
     , filepath
     , fsnotify
