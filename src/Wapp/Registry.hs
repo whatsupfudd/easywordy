@@ -35,11 +35,13 @@ loadAppDefs wappConf = do
     let
       appDefFile = Spx.joinPath [wappConf.waDefDir, filePath]
     in do
+    putStrLn $ "@[loadAppDefs] decoding app def file: " <> filePath
     rezC <- Y.decodeFileEither appDefFile :: IO (Either Y.ParseException Wd.AppDef)
     case rezC of
       Left err ->
         pure . Left $ (filePath, err)
-      Right appDef ->
+      Right appDef -> do
+        putStrLn $ "@[loadAppDefs] found uid: " <> show appDef.uid
         pure . Right $ appDef
   case lefts rezA of
     [] -> do

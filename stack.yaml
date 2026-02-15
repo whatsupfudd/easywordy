@@ -16,13 +16,13 @@ extra-deps:
   - ../../../Haskell/OpenAI/LocalLibs/openai-client/openai-gen
   - ../../../Haskell/OpenAI/LocalLibs/hs-connection
   - ../../../Haskell/Minio/minio-hs
+  - ../Wapp/Lib/Natives/General
   - ../Wapp/Lib/Natives/Aox
   - ../Wapp/Lib/Natives/GnuHealth
   - ../Wapp/Lib/Natives/KnowDocs
   - ../Wapp/Lib/Natives/Scenario
   - ../Wapp/Lib/Natives/Z14L
   - ../Wapp/Lib/Natives/Complexor
-  - ../Wapp/Lib/Natives/General
   - ../Wapp/Lib/Natives/GoldFann
   - ../Wapp/Lib/Natives/KdofA
 

@@ -156,9 +156,9 @@ wsStreamInit appID conn = do
         jsSupport <- case firstLib.ident of
           "" -> pure Nothing
           anIdent -> do
-            (jsSession, jsModule) <- do
+            (jsSession, jsModule) <-
               liftIO $ Jss.initJS (aLiveApp.wapp.rootPath </> T.unpack anIdent) firstLib.label
-            pure $ Just $ JSExecSupport jsSession jsModule ILib.buildNativeLibrary
+            pure . Just $ JSExecSupport jsSession jsModule ILib.buildNativeLibrary
         let
           newContext = ClientContext {
             liveApp = aLiveApp
@@ -191,6 +191,7 @@ wsStreamInit appID conn = do
                 newCommChannel <- liftIO $ Cs.newTVarIO ""
                 newUpdateSignal <- liftIO Cs.newEmptyTMVarIO
                 newWatcher <- liftIO $ newWatcher appDef.rootPath newCommChannel newUpdateSignal
+                -- Get a DB pool for the app:
                 mbDb <- case appDef.db of
                   Just dbConf ->
                     let
@@ -199,6 +200,14 @@ wsStreamInit appID conn = do
                     liftIO . putStrLn $ "@[wsStreamInit] acquiring db pool, " <> (T.unpack . decodeUtf8) dbConf.host <> ", user: " <>(T.unpack . decodeUtf8) dbConf.user <> ", db:" <> (T.unpack . decodeUtf8) dbConf.dbase
                     Just <$> liftIO (acquire dbConf.poolSize dbConf.acqTimeout dbConf.poolTimeOut dbConf.poolIdleTime dbSettings)
                   Nothing -> pure Nothing
+                -- Load/link the native libraries for the app:
+                liftIO $ P.putStrLn $ "@[wsStreamInit] wapp libs: " <> show appDef.libs
+                forM_ appDef.libs $ \aLib -> do
+                  case aLib.label of
+                    "Natives" -> do
+                      liftIO $ Ld.loadWappNative (Uu.toString aUID) rtOpts.nativesRoot (T.unpack aLib.ident)
+                    _ -> pure $ Right ()
+
                 let
                   newApp = LiveWapp {
                     wapp = appDef
@@ -207,14 +216,9 @@ wsStreamInit appID conn = do
                     , commChannel = newCommChannel
                     , db = mbDb
                     }
-                let
                   newState = wState { cache = Mp.insert aUID newApp wState.cache }
-                liftIO $ P.putStrLn $ "@[getTargetApp] adding new Wapp, ID: " <> show aUID
-                liftIO $ putStrLn "@[wsStreamInit] loading native library for app: 0to1done\n---"
-                liftIO $ Ld.loadWappNative rtOpts.nativesRoot "0to1done"
-                _ <- liftIO $ Nr.lookupNative "0to1done.getIdeas"
 
-                liftIO $ putStrLn "@[wsStreamInit] --- done."
+                liftIO $ P.putStrLn $ "@[getTargetApp] adding new Wapp, ID: " <> show aUID
                 pure $ Right newApp
           Just liveApp -> do
             liftIO $ P.putStrLn $ "@[getTargetApp] found liveApp, ID: " <> show aUID

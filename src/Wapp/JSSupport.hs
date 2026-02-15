@@ -143,68 +143,49 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
       putStrLn $ "@[libEx/0] execParams: " <> show execParams
       case mbDb of
         Just dbPool ->
-          if execParams.package == "0to1done" then
+          if Mp.notMember execParams.package jsSupport.hsLibs then
+            -- Dynamic library system (new):
             let
               fctName = execParams.package <> "." <> execParams.action
             in do
-            putStrLn $ "@[libEx/0to1done] looking up native function: " <> unpack fctName
+            putStrLn $ "@[libExec] looking up native function: " <> unpack fctName
             target <- Nr.lookupNative fctName
             case target of
               Just fct -> do
                 eiActs <- fct dbPool (execParams.params, Nothing)
                 case eiActs of
                   Left err -> do
-                    putStrLn $ "@[libEx/1/0to1done] error fetching acts: " <> err
-                    pure $ Ae.encode $ NativeError { msg = "@[libEx/1/0to1done] err acts: " <> pack err }
+                    putStrLn $ "@[libExec] error fetching acts: " <> err
+                    pure $ Ae.encode $ NativeError { msg = "@[libExec] " <> fctName <> " err acts: " <> pack err }
                   Right rez -> do
-                    putStrLn $ "@[libEx/2/0to1done] acts: " <> show rez
+                    putStrLn $ "@[libExec] invocation rez: " <> show rez
                     pure rez
               Nothing -> do
-                putStrLn $ "@[libEx/3/0to1done] function not found: " <> unpack fctName
-                pure $ Ae.encode $ NativeError { msg = "@[libEx/3/0to1done] package not found: " <> execParams.package }
+                putStrLn $ "@[libExec] function not found: " <> unpack fctName
+                pure $ Ae.encode $ NativeError { msg = "@[libExec] package not found: " <> execParams.package }
           else do
-          case Mp.lookup execParams.package jsSupport.hsLibs of
-            Just lib -> do
-              case Mp.lookup execParams.action lib of
-                Just fct -> do
-                  eiActs <- fct dbPool (execParams.params, Nothing)
-                  case eiActs of
-                    Left err -> do
-                      putStrLn $ "@[libEx/1] error fetching acts: " <> err
-                      pure $ Ae.encode $ NativeError { msg = "@[libEx/1] err acts: " <> pack err }
-                    Right rez -> do
-                      putStrLn $ "@[libEx/2] acts: " <> show rez
-                      pure rez
-                Nothing ->
-                  let
-                    errMsg = "@[libEx/5] package " <> execParams.package <> ", action not found: " <> execParams.action
-                  in do
-                  putStrLn $ unpack errMsg
-                  pure $ Ae.encode $ NativeError { msg = errMsg }
-                  {-- TMP: fake a fetchPresentation call, for app z14l.
-                  do
-                  let
-                    fakeUuid = "c909e59a-e2f0-41d1-ac70-932dea279823"
-                  putStrLn $ "@[libExec] jsParams: " <> show execParams
-                  case fromString fakeUuid of
-                    Nothing -> do
-                      pure $ "@[libExec] error parsing UUID: " <> (LBS.fromStrict . encodeUtf8 . pack) fakeUuid
-                    Just prezId ->
-                      let
-                        aValue = Ae.object [ "eid" Ae..= prezId ]
-                      in do
-                      eiPrez <- Ps.fetchPresentation dbPool (aValue, Nothing)
-                      case eiPrez of
-                        Left err -> do
-                          putStrLn $ "@[libExec] error fetching presentation: " <> err
-                          pure $ "ERROR: " <> (LBS.fromStrict . encodeUtf8 . pack) err
-                        Right prez -> do
-                          -- putStrLn $ "@[libExec] presentation: " <> show prez
-                          pure prez
-                  -}
-            Nothing -> do
-              putStrLn $ "@[libEx/3] package not found: " <> unpack execParams.package
-              pure $ Ae.encode $ NativeError { msg = "@[libEx/3] package not found: " <> execParams.package }
+            -- Statically linked system (old):
+            case Mp.lookup execParams.package jsSupport.hsLibs of
+              Just lib -> do
+                case Mp.lookup execParams.action lib of
+                  Just fct -> do
+                    eiActs <- fct dbPool (execParams.params, Nothing)
+                    case eiActs of
+                      Left err -> do
+                        putStrLn $ "@[libEx/1] error fetching acts: " <> err
+                        pure $ Ae.encode $ NativeError { msg = "@[libEx/1] err acts: " <> pack err }
+                      Right rez -> do
+                        putStrLn $ "@[libEx/2] acts: " <> show rez
+                        pure rez
+                  Nothing ->
+                    let
+                      errMsg = "@[libEx/5] package " <> execParams.package <> ", action not found: " <> execParams.action
+                    in do
+                    putStrLn $ unpack errMsg
+                    pure $ Ae.encode $ NativeError { msg = errMsg }
+              Nothing -> do
+                putStrLn $ "@[libEx/3] package not found: " <> unpack execParams.package
+                pure $ Ae.encode $ NativeError { msg = "@[libEx/3] package not found: " <> execParams.package }
         Nothing -> do
           putStrLn "@[libEx/4]: no database pool"
           pure $ Ae.encode $ NativeError { msg = "@[libEx/4]: no database pool" }
