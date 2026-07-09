@@ -12,6 +12,7 @@ import qualified Data.List as L
 import qualified Data.Map as Mp
 import Data.Text (Text, pack, unpack, splitOn)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import Data.Time.Clock (NominalDiffTime)
 
 import System.FilePath.Posix ((</>))
 
@@ -30,7 +31,9 @@ import qualified Text.Blaze.Html.Renderer.Utf8 as H
 import qualified Text.Blaze.Html5 as H
 
 
-import Options.Runtime (RunOptions (..), WpConfig (..), ZbConfig (..))
+import Options.Runtime (RunOptions (..), WpConfig (..)
+        --, ZbConfig (..)
+    )
 
 import Api.Types
 import qualified HttpSup.Types as Ht
@@ -210,7 +213,7 @@ indexReactor mbStepID reqData = do
   _ <- liftIO . putStrLn $ "@[indexReactor] reqData: " <> show reqData
   rtOpts <- asks config_Ctxt
   (result, duration) <- case mbStepID of
-      Nothing -> pure ("<html><head><title>EASY VERSE</title></head><body><nil></body></html>", 0)
+      Nothing -> pure ("<html><head><title>EASY VERSE</title></head><body><nil></body></html>", 0 :: NominalDiffTime)
       Just eiNumber -> case eiNumber of
         Left errMsg ->
           let msg = "<html><head><title>EASY VERSE</title></head><body>err: " <> encodeUtf8 errMsg <> "</body></html>"

@@ -6,8 +6,8 @@ import Data.Text (Text)
 import qualified Wapp.AppDef as Wd
 
 import qualified Wapp.Internal.WordPress.Functions as Wpf
-import qualified Wapp.Internal.Z14L.Logic as Cl
-import qualified Wapp.Internal.Z14L.Video as Cv
+-- import qualified Wapp.Internal.Z14L.Logic as Cl
+-- import qualified Wapp.Internal.Z14L.Video as Cv
 -- import qualified Wapp.Apps.Scenario.Prez as Sc
 -- import qualified Wapp.Apps.Scenario.Presentation.DbOps as Sc
 -- import qualified Wapp.Apps.Aox.Logic as Aop
@@ -29,8 +29,8 @@ buildInternalLibrary = Mp.fromList [
       , ("fetchFileDetails", Wpf.fetchFileDetails)
     ])
     , ("internal.chat", Mp.fromList [
-      ("receiveMsg", Cl.receiveMsg)
-      , ("startVideoSession", Cv.startSession)
+      -- ("receiveMsg", Cl.receiveMsg)
+      -- , ("startVideoSession", Cv.startSession)
     ])
   ]
 

@@ -49,19 +49,21 @@ data NewAssetInfo = NewAssetInfo {
 
 data WappRoutes mode = WappRoutes {
     phpTest :: mode :- "index.php" :> QueryParam' '[Optional, Lenient] "p" Int :> Get '[HTML] Html
-    , xStatic :: mode :- "xstatic" :> CaptureAll "path" String :> Get '[HTML] Html
     -- TODO: find out how to make the capture optional, giving a Maybe Text.
     , wsStream :: mode :- "stream" :> Capture "sid" Text :> WebSocket
     , upload :: mode :- "upload" :> MultipartForm Tmp (MultipartData Tmp) :> Post '[PlainText] String
-    , rootZN :: mode :- Get '[HTML] Html
 
     , ui :: mode :- "ui" :> ToServantApi WappUIRoutes
     , auth :: mode :- "auth" :> ToServantApi WappAuthRoutes
     , user :: mode :- "user" :> ToServantApi WappUserRoutes
     , authz :: mode :- "authz" :> ToServantApi WappAuthzRoutes
     , admin :: mode :- "admin" :> ToServantApi WappAdminRoutes
+
+    -- , xStatic :: mode :- "xstatic" :> CaptureAll "path" String :> Get '[HTML] Html
+    -- , rootZN :: mode :- Get '[HTML] Html
   }
   deriving stock (Generic)
+
 
 data WappAuthRoutes mode = WappAuthRoutes {
     -- REST login (creates a new EW session and attaches/creates a context)

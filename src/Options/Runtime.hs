@@ -1,17 +1,17 @@
 module Options.Runtime (
   defaultRun, RunOptions (..)
   , WpConfig (..), defaultWpConf
+  , WappConfig (..), defaultWappConf
+  , module DB.Connect
+  {-
   , ZbConfig (..), defaultZbConf
   , OpenAiConfig (..), defaultOpenAiConf
-  , WappConfig (..), defaultWappConf
   , TavusConfig (..), defaultTavusConf
   , AiservConfig (..), defaultAiservConf
-  , module DB.Connect
-
+  -}
 ) where
--- , DbConfig (..)
 
--- import Data.Int (Int)
+
 import Data.Text (Text)
 
 import System.FilePath ((</>))
@@ -36,6 +36,20 @@ data WpConfig = WpConfig {
   deriving (Show)
 
 
+data WappConfig = WappConfig {
+  waDefDir :: FilePath
+  , waContentDir :: FilePath
+  }
+  deriving (Show)
+
+
+defaultWappConf :: FilePath -> WappConfig
+defaultWappConf homeDir = WappConfig {
+  waDefDir = homeDir </> "Wapp/Defs"
+  , waContentDir = homeDir </> "Wapp/Apps"
+  }
+
+{-
 newtype ZbConfig = ZbConfig {
   zbRootPath :: FilePath
   }
@@ -72,19 +86,6 @@ defaultZbConf homeDir = ZbConfig {
   }
 
 
-data WappConfig = WappConfig {
-  waDefDir :: FilePath
-  , waContentDir :: FilePath
-  }
-  deriving (Show)
-
-
-defaultWappConf :: FilePath -> WappConfig
-defaultWappConf homeDir = WappConfig {
-  waDefDir = homeDir </> "Wapp/Defs"
-  , waContentDir = homeDir </> "Wapp/content"
-  }
-
 newtype TavusConfig = TavusConfig {
   apiKeyTavus :: Text
   }
@@ -94,6 +95,8 @@ defaultTavusConf :: TavusConfig
 defaultTavusConf = TavusConfig {
   apiKeyTavus = "1234567890"
   }
+-}
+
 
 data RunOptions = RunOptions {
     debug :: Int
@@ -103,13 +106,15 @@ data RunOptions = RunOptions {
     , serverHost :: Text
     , pgDbConf :: PgDbConfig
     , wp :: WpConfig
-    , zb :: ZbConfig
     , wapp :: WappConfig
+    , s3store :: Maybe S3Config
+    , nativesRoot :: FilePath
+    {-
+    , zb :: ZbConfig
     , openai :: OpenAiConfig
     , aiserv :: Maybe AiservConfig
     , tavus :: TavusConfig
-    , s3store :: Maybe S3Config
-    , nativesRoot :: FilePath
+    -}
   }
   deriving (Show)
 
@@ -124,11 +129,13 @@ defaultRun homeDir homeConfig server port =
     , serverPort = port
     , pgDbConf = defaultPgDbConf
     , wp = defaultWpConf homeDir
-    , zb = defaultZbConf homeDir
     , wapp = defaultWappConf homeDir
+    , s3store = Nothing
+    , nativesRoot = homeDir </> ".fudd/easywordy/natives"
+    {-
+    , zb = defaultZbConf homeDir
     , openai = defaultOpenAiConf
     , aiserv = Nothing
     , tavus = defaultTavusConf
-    , s3store = Nothing
-    , nativesRoot = homeDir </> ".fudd/easywordy/natives"
+    -}
   }

@@ -63,14 +63,17 @@ data WpOptions = WpOptions {
   }
   deriving stock (Show, Generic)
 
-newtype ZbOptions = ZbOptions {
-    zbRoot :: Maybe FilePath
-  }
-  deriving stock (Show, Generic)
 
 data WappOptions = WappOptions {
   waDef :: Maybe FilePath
   , waContent :: Maybe FilePath
+  }
+  deriving stock (Show, Generic)
+
+
+{-
+newtype ZbOptions = ZbOptions {
+    zbRoot :: Maybe FilePath
   }
   deriving stock (Show, Generic)
 
@@ -91,6 +94,7 @@ newtype TavusOptions = TavusOptions {
   apiKey :: Maybe Text
   }
   deriving stock (Show, Generic)
+-}
 
 data S3Options = S3Options {
   accessKey :: Maybe Text
@@ -109,11 +113,13 @@ data FileOptions = FileOptions {
   , jwt :: Maybe JwtOpts
   , cors :: Maybe CorsOpts
   , wordpress :: Maybe WpOptions
-  , zhopness :: Maybe ZbOptions
   , wapp :: Maybe WappOptions
+  {-
+  , zhopness :: Maybe ZbOptions
   , openai :: Maybe OpenAiOptions
   , aiserv :: Maybe AiservOptions
   , tavus :: Maybe TavusOptions
+  -}
   , s3store :: Maybe S3Options
   , nativesRoot :: Maybe FilePath
  }
@@ -139,11 +145,13 @@ instance Aes.FromJSON ServerOpts
 instance Aes.FromJSON JwtOpts
 instance Aes.FromJSON CorsOpts
 instance Aes.FromJSON WpOptions
+instance Aes.FromJSON WappOptions
+{-
 instance Aes.FromJSON ZbOptions
 instance Aes.FromJSON OpenAiOptions
 instance Aes.FromJSON AiservOptions
-instance Aes.FromJSON WappOptions
 instance Aes.FromJSON TavusOptions
+-}
 instance Aes.FromJSON S3Options
 
 parseFileOptions :: FilePath -> IO (Either String FileOptions)

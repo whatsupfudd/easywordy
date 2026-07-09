@@ -12,7 +12,7 @@ import Network.Wai.Handler.Warp as Wrp
 
 import Api.Handlers (setupWai)
 import Wapp.Internal.WordPress.Wrapper (defineSapiModuleStruct, endPhp)
-import DB.Connect (startMql, startPg)
+import DB.Connect (startMql, startPg, testMql)
 import ServeApi (launchServant)
 import Wapp.FileWatcher (newWatcher)
 import Wapp.Registry (loadAppDefs)
@@ -20,7 +20,8 @@ import Options.Runtime as Rto
 
 serverCmd :: Rto.RunOptions -> IO ()
 serverCmd rtOpts = do
-  putStrLn $ "@[serverCmd] starting, wapp: " <> show rtOpts.wapp <> "\n  zhopness: " <> show rtOpts.zb
+  putStrLn $ "@[serverCmd] starting, wapp: " <> show rtOpts.wapp -- <> "\n  zhopness: " <> show rtOpts.zb
+  putStrLn $ "@[serverCmd] mqlDbConf: " <> show rtOpts.wp.mqlDbConf
   sapiModuleDef <- defineSapiModuleStruct
   eiRouteDict <- loadAppDefs rtOpts.wapp
   -- TODO: make the creation of defWatcher conditional to the runtime config.
@@ -37,6 +38,7 @@ serverCmd rtOpts = do
         pgPool = startPg rtOpts.pgDbConf
         contArgs = (,,,) <$> pgPool <*> mqlConn <*> pure sapiModuleDef <*> pure (routeDict, Just defWatcher)
       in do
+        t2 <- testMql rtOpts.wp.mqlDbConf
         putStrLn "@[serverCmd] going to start mainAction."
         runContT contArgs mainAction
   where

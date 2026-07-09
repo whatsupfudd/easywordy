@@ -1,6 +1,6 @@
 module DB.Connect where
 
-import Control.Exception (bracket)
+import Control.Exception (bracket, try)
 import Control.Monad.Cont (ContT (..))
 import Control.Monad.IO.Class (liftIO)
 
@@ -85,3 +85,24 @@ startMql dbC =
   rezA <- ContT $ bracket (Msql.connect dbSettings) Msql.close
   liftIO . putStrLn $ "@[startMql] done."
   pure rezA
+
+
+testMql :: MqlDbConfig -> IO ()
+testMql dbC = do
+  let
+    dbSettings = Msql.defaultConnectInfo {
+      Msql.ciUser = dbC.userMq
+      , Msql.ciPassword = dbC.passwdMq
+      , Msql.ciDatabase = dbC.dbaseMq
+      , Msql.ciHost = dbC.hostMq
+      , Msql.ciPort = fromIntegral dbC.portMq
+    }
+  putStrLn $ "@[testMql] connecting to " <> dbC.hostMq <> ":" <> show dbC.portMq <> " as " <> show dbC.userMq
+  excpConn <- try $ Msql.connect dbSettings :: IO (Either Msql.ERRException Msql.MySQLConn)
+  case excpConn of
+    Left err -> do
+      putStrLn $ "@[testMql] error connecting to " <> dbC.hostMq <> ":" <> show dbC.portMq <> " as " <> show dbC.userMq <> ": " <> show err
+      return ()
+    Right conn -> do
+      putStrLn $ "@[testMql] connected to " <> dbC.hostMq <> ":" <> show dbC.portMq <> " as " <> show dbC.userMq
+      Msql.close conn

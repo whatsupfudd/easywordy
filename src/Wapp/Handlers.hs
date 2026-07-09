@@ -93,18 +93,18 @@ wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
 wappHandlers =
   genericServerT $ WappRoutes {
     phpTest = phpTestHdl
-    , xStatic = xStaticHdl
+    -- , xStatic = xStaticHdl
     , wsStream = wsStreamInit
     , upload = uploadHdl
-    , rootZN = welcomeHdZN
     , ui = wappUIHandlers
     , auth = wappAuthHandlers
     , user = wappUserHandlers
     , authz = wappAuthzHandlers
     , admin = wappAdminHandlers
+  --  , rootZN = welcomeHdZN
   }
 
-
+{-
 welcomeHdZN :: EasyVerseApp Html
 welcomeHdZN = do
   rtOpts <- Gm.asks config_Ctxt
@@ -112,7 +112,7 @@ welcomeHdZN = do
     targetFile = rtOpts.zb.zbRootPath <> "/mainFrame_1.html"
   content <- liftIO $ Bs.readFile targetFile
   pure . Html . Lbs.toStrict $ content
-
+-}
 
 phpTestHdl :: Maybe (Either Text Int) -> EasyVerseApp Html
 phpTestHdl mbPostID = do
@@ -435,6 +435,8 @@ uploadHdl aMultipartData = do
   -- existence of the new files.
   pure "OK"
 
+
+{-
 xStaticHdl :: [String] -> EasyVerseApp Html
 xStaticHdl segments = do
   rtOpts <- Rws.asks config_Ctxt
@@ -446,7 +448,6 @@ xStaticHdl segments = do
   pure . Html . Lbs.toStrict $ pageContent
 
 
-{-
 wappHandlers :: ToServant WappRoutes (AsServerT EasyVerseApp)
 wappHandlers =
   genericServerT $ WappRoutes {

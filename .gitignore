@@ -1,4 +1,6 @@
 .stack-work/
+.release/
+
 *~
 ._*
 .DS_Store

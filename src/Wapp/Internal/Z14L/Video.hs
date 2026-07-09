@@ -38,7 +38,7 @@ import qualified Text.Markdown as Md
 import qualified Options.Runtime as Rt
 import qualified Wapp.AppDef as Wd
 
-
+{-
 startSession :: Wd.InternalFunction
 startSession rtOpts pgDb (jsonParams, content) = do
   rezA <- fetchConvURL rtOpts
@@ -235,3 +235,5 @@ snakeToCamel :: String -> String
 snakeToCamel [] = []
 snakeToCamel ('_':c:cs) = toUpper c : snakeToCamel cs
 snakeToCamel (c:cs) = c : snakeToCamel cs
+
+-}

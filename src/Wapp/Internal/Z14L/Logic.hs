@@ -41,6 +41,8 @@ import qualified Text.Markdown as Md
 import qualified Options.Runtime as Rt
 import qualified Wapp.AppDef as Wd
 
+{-
+
 data UserProfile = UserProfile {
   avatar :: Text
   , altAvatar :: Text
@@ -441,3 +443,5 @@ buildMessages (aText, queryTime) (reply, replyTime) =
         , messageID = endID
     }
   ]
+
+-}
