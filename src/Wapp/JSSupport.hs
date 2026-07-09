@@ -28,11 +28,11 @@ import Language.JavaScript.Inline
 import Language.JavaScript.Inline.Core
 
 import qualified Options.Runtime as Rt
-import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
-import qualified Wapp.Apps.Aox.Logic as Aox
-import qualified Wapp.Apps.Scenario.Presentation.DbOps as Pt
 import qualified Wapp.AppDef as Wd
 import qualified Native.Registry as Nr
+-- import qualified Wapp.Apps.Scenario.Presentation.Storage as Ps
+-- import qualified Wapp.Apps.Aox.Logic as Aox
+-- import qualified Wapp.Apps.Scenario.Presentation.DbOps as Pt
 
 import Wapp.Types (JSExecSupport(..))
 
@@ -158,7 +158,7 @@ runElmFunction jsSupport mbDb moduleName functionName requestParams = do
                     putStrLn $ "@[libExec] error fetching acts: " <> err
                     pure $ Ae.encode $ NativeError { msg = "@[libExec] " <> fctName <> " err acts: " <> pack err }
                   Right rez -> do
-                    putStrLn $ "@[libExec] invocation rez: " <> show rez
+                    -- putStrLn $ "@[libExec] invocation rez: " <> show rez
                     pure rez
               Nothing -> do
                 putStrLn $ "@[libExec] function not found: " <> unpack fctName

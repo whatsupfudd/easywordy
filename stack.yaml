@@ -1,5 +1,4 @@
 resolver:
-  # url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/21/25.yaml
   url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/44.yaml
 
 
@@ -12,19 +11,19 @@ extra-deps:
 
   - ../Lib/inline-js/inline-js
   - ../Lib/inline-js/inline-js-core
-  - ../../../Haskell/OpenAI/LocalLibs/openai-client
-  - ../../../Haskell/OpenAI/LocalLibs/openai-client/openai-gen
   - ../../../Haskell/OpenAI/LocalLibs/hs-connection
   - ../../../Haskell/Minio/minio-hs
   - ../Wapp/Lib/Natives/General
-  - ../Wapp/Lib/Natives/Aox
-  - ../Wapp/Lib/Natives/GnuHealth
-  - ../Wapp/Lib/Natives/KnowDocs
-  - ../Wapp/Lib/Natives/Scenario
-  - ../Wapp/Lib/Natives/Z14L
-  - ../Wapp/Lib/Natives/Complexor
-  - ../Wapp/Lib/Natives/GoldFann
-  - ../Wapp/Lib/Natives/KdofA
+  #- ../../../Haskell/OpenAI/LocalLibs/openai-client
+  #- ../../../Haskell/OpenAI/LocalLibs/openai-client/openai-gen
+  #- ../Wapp/Lib/Natives/Aox
+  #- ../Wapp/Lib/Natives/GnuHealth
+  #- ../Wapp/Lib/Natives/KnowDocs
+  #- ../Wapp/Lib/Natives/Scenario
+  #- ../Wapp/Lib/Natives/Z14L
+  #- ../Wapp/Lib/Natives/Complexor
+  #- ../Wapp/Lib/Natives/GoldFann
+  #- ../Wapp/Lib/Natives/KdofA
 
 
 system-ghc: true

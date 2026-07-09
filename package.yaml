@@ -116,8 +116,6 @@ dependencies:
   - fsnotify
   # For scenario support:
   - profunctors
-  # For Aox:
-  - aoxsup
   # For MinIO:
   - minio-hs
   - scientific
@@ -126,14 +124,14 @@ dependencies:
   #- primitive
   #- memory
   # For Wapps:
-  - aoxsup
-  - gnuhealth
-  - knowdocs
-  - scenario
-  - z14l
-  - complexor
-  - goldfann
-  - kdofa
+  # - aoxsup
+  # - gnuhealth
+  # - knowdocs
+  # - scenario
+  # - z14l
+  # - complexor
+  # - goldfann
+  # - kdofa
   - ew-general
 
 

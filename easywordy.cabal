@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 
@@ -87,7 +87,6 @@ library
       php
   build-depends:
       aeson
-    , aoxsup
     , base >=4.7 && <5
     , binary
     , blaze-html
@@ -96,7 +95,6 @@ library
     , blaze-svg
     , bytestring
     , case-insensitive
-    , complexor
     , conduit
     , connection >=0.3.2
     , containers
@@ -106,8 +104,6 @@ library
     , filepath
     , fsnotify
     , gitrev
-    , gnuhealth
-    , goldfann
     , hasql
     , hasql-pool
     , hasql-th
@@ -122,8 +118,6 @@ library
     , inline-js-core
     , io-streams
     , jose
-    , kdofa
-    , knowdocs
     , lens
     , lucid
     , markdown
@@ -137,7 +131,6 @@ library
     , profunctors
     , rio
     , safe-exceptions
-    , scenario
     , scientific
     , servant
     , servant-auth
@@ -162,7 +155,6 @@ library
     , warp
     , websockets
     , yaml
-    , z14l
   default-language: Haskell2010
 
 executable easywordy
@@ -180,7 +172,6 @@ executable easywordy
       php
   build-depends:
       aeson
-    , aoxsup
     , base >=4.7 && <5
     , binary
     , blaze-html
@@ -189,7 +180,6 @@ executable easywordy
     , blaze-svg
     , bytestring
     , case-insensitive
-    , complexor
     , conduit
     , connection >=0.3.2
     , containers
@@ -200,8 +190,6 @@ executable easywordy
     , filepath
     , fsnotify
     , gitrev
-    , gnuhealth
-    , goldfann
     , hasql
     , hasql-pool
     , hasql-th
@@ -216,8 +204,6 @@ executable easywordy
     , inline-js-core
     , io-streams
     , jose
-    , kdofa
-    , knowdocs
     , lens
     , lucid
     , markdown
@@ -231,7 +217,6 @@ executable easywordy
     , profunctors
     , rio
     , safe-exceptions
-    , scenario
     , scientific
     , servant
     , servant-auth
@@ -256,7 +241,6 @@ executable easywordy
     , warp
     , websockets
     , yaml
-    , z14l
   default-language: Haskell2010
 
 test-suite easywordy-test
@@ -275,7 +259,6 @@ test-suite easywordy-test
       php
   build-depends:
       aeson
-    , aoxsup
     , base >=4.7 && <5
     , binary
     , blaze-html
@@ -284,7 +267,6 @@ test-suite easywordy-test
     , blaze-svg
     , bytestring
     , case-insensitive
-    , complexor
     , conduit
     , connection >=0.3.2
     , containers
@@ -295,8 +277,6 @@ test-suite easywordy-test
     , filepath
     , fsnotify
     , gitrev
-    , gnuhealth
-    , goldfann
     , hasql
     , hasql-pool
     , hasql-th
@@ -311,8 +291,6 @@ test-suite easywordy-test
     , inline-js-core
     , io-streams
     , jose
-    , kdofa
-    , knowdocs
     , lens
     , lucid
     , markdown
@@ -326,7 +304,6 @@ test-suite easywordy-test
     , profunctors
     , rio
     , safe-exceptions
-    , scenario
     , scientific
     , servant
     , servant-auth
@@ -351,5 +328,4 @@ test-suite easywordy-test
     , warp
     , websockets
     , yaml
-    , z14l
   default-language: Haskell2010
